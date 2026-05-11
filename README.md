@@ -58,11 +58,28 @@ For localhost auth, provide either:
 - `DASHBOARD_TOKEN`
 - or `DASHBOARD_TOKEN_FILE`
 
-## Run the backend
+## Daily use
+
+Build the frontend once, then start the app with a single script:
+
+```powershell
+npm ci
+npm run build
+pwsh -File .\start-app.ps1
+```
+
+The default homepage URL in daily-use mode is `http://127.0.0.1:41777`.
+
+## Development
+
+For development, keep the backend and frontend separate:
 
 ```powershell
 pwsh -File .\bootstrap.ps1 start
+npm run dev
 ```
+
+The frontend dev server remains `http://127.0.0.1:41778`.
 
 ## Check backend status
 
@@ -75,24 +92,6 @@ pwsh -File .\bootstrap.ps1 status
 ```powershell
 pwsh -File .\bootstrap.ps1 stop
 ```
-
-## Run the frontend
-
-```powershell
-npm run dev
-```
-
-The default frontend URL is `http://127.0.0.1:41778`.
-
-The browser UI is served separately from the backend during development.
-
-## Build
-
-```powershell
-npm run build
-```
-
-Note: the current build only emits the client bundle.
 
 ## Typecheck
 
