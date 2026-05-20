@@ -8,7 +8,7 @@ import test from "node:test"
 
 import express from "express"
 
-import { RAW_OPENCODE_MESSAGES_CURSOR_KEY } from "../services/raw-opencode"
+import { rawOpencodeMessagesCursorKey } from "../services/raw-opencode"
 import { bootstrapAnalyticsDb, openAnalyticsDb } from "../storage/db"
 import { sync_state } from "../storage/schema.sql"
 import { diagnosticsRoutes } from "./diagnostics"
@@ -34,7 +34,7 @@ test("diagnostics lastSyncTime reads actual raw OpenCode cursor keys", async () 
   bootstrapAnalyticsDb(analyticsDbPath)
   const db = openAnalyticsDb(analyticsDbPath)
   try {
-    db.insert(sync_state).values({ key: RAW_OPENCODE_MESSAGES_CURSOR_KEY, value: String(cursorTime) }).run()
+    db.insert(sync_state).values({ key: rawOpencodeMessagesCursorKey("opencode"), value: String(cursorTime) }).run()
   } finally {
     db.sqlite.close()
   }

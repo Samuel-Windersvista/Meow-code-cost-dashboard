@@ -18,23 +18,21 @@ function formatUsd(value: number | null, locale?: Intl.LocalesArgument) {
   }).format(value)
 }
 
-function formatEnum(value: string, locale?: Intl.LocalesArgument) {
-  const zh = typeof locale === "string" && locale.startsWith("zh")
-  const map: Record<string, [string, string]> = {
-    manual: ["Manual", "手动"],
-    official: ["Official", "官方"],
-    openrouter: ["OpenRouter", "OpenRouter"],
-    websearch: ["Web Search", "网页搜索"],
-    per_token: ["Per Token", "逐令牌"],
-    included_in_output: ["Included in Output", "并入输出"],
-    stale: ["Stale", "过期"],
-    active: ["Active", "有效"],
-    disabled: ["Disabled", "已禁用"],
-    priced: ["Priced", "已定价"],
-    missing: ["Missing", "缺失"],
+function formatEnum(value: string, labels: Record<string, string>) {
+  const map: Record<string, string> = {
+    manual: labels.enumManual,
+    official: labels.enumOfficial,
+    openrouter: labels.enumOpenRouter,
+    websearch: labels.enumWebSearch,
+    per_token: labels.enumPerToken,
+    included_in_output: labels.enumIncludedInOutput,
+    stale: labels.enumStale,
+    active: labels.enumActive,
+    disabled: labels.enumDisabled,
+    priced: labels.enumPriced,
+    missing: labels.enumMissing,
   }
-  const item = map[value]
-  return item ? item[zh ? 1 : 0] : value
+  return map[value] ?? value
 }
 
 function safeHttpUrl(value: string | null | undefined) {
@@ -48,61 +46,6 @@ function safeHttpUrl(value: string | null | undefined) {
   } catch {
     return null
   }
-}
-
-function localCopy(locale?: Intl.LocalesArgument) {
-  const zh = typeof locale === "string" && locale.startsWith("zh")
-  return zh
-    ? {
-        noSessions: "暂无会话",
-        sessions: "个会话",
-        tokens: "令牌",
-        unavailable: "不可用",
-        records: "条记录",
-        gap: "缺口",
-        firstSeen: "首次发现",
-        lastSeen: "最后发现",
-        reason: "原因",
-        hint: "提示",
-        noGaps: "暂无缺口",
-        noSessionsAvailable: "暂无可用会话",
-        pricingRecordsUnavailable: "定价记录不可用",
-        current: "当前",
-        freshnessUnavailable: "新鲜度不可用",
-        noMissingPricing: "未检测到缺失定价",
-        noObservedCoverage: "暂无观测供应商覆盖",
-        pricedVia: "定价经由",
-        unpriced: "未定价",
-        expand: "展开",
-        collapse: "收起",
-        models: "个模型",
-        messages: "条消息",
-      }
-    : {
-        noSessions: "No sessions",
-        sessions: "sessions",
-        tokens: "tokens",
-        unavailable: "Unavailable",
-        records: "records",
-        gap: "gap",
-        firstSeen: "First seen",
-        lastSeen: "Last seen",
-        reason: "Reason",
-        hint: "Hint",
-        noGaps: "No gaps",
-        noSessionsAvailable: "No sessions available",
-        pricingRecordsUnavailable: "Pricing records unavailable",
-        current: "Current",
-        freshnessUnavailable: "Freshness unavailable",
-        noMissingPricing: "No missing pricing detected",
-        noObservedCoverage: "No observed provider coverage",
-        pricedVia: "priced via",
-        unpriced: "unpriced",
-        expand: "Expand",
-        collapse: "Collapse",
-        models: "models",
-        messages: "messages",
-      }
 }
 
 export function LeaderboardTables(props: {
@@ -147,6 +90,43 @@ export function LeaderboardTables(props: {
     reasoningRule: string
     yes: string
     no: string
+    // localCopy fields
+    noSessions: string
+    sessions: string
+    unavailable: string
+    records: string
+    gap: string
+    firstSeen: string
+    lastSeen: string
+    reason: string
+    hint: string
+    noGaps: string
+    noSessionsAvailable: string
+    pricingRecordsUnavailable: string
+    current: string
+    freshnessUnavailable: string
+    noMissingPricing: string
+    noObservedCoverage: string
+    pricedVia: string
+    unpriced: string
+    expand: string
+    collapse: string
+    models: string
+    messages: string
+    // formatEnum fields
+    enumManual: string
+    enumOfficial: string
+    enumOpenRouter: string
+    enumWebSearch: string
+    enumPerToken: string
+    enumIncludedInOutput: string
+    enumStale: string
+    enumActive: string
+    enumDisabled: string
+    enumPriced: string
+    enumMissing: string
+    // singular/plural
+    modelSingular: string
   }
 }) {
   const [drafts, setDrafts] = useState<Record<string, { inputPrice: string; outputPrice: string; reasoningPrice: string; cacheReadPrice: string; cacheWritePrice: string; sourceUrl: string }>>({})
@@ -157,20 +137,18 @@ export function LeaderboardTables(props: {
   const observedPricingCoverage = props.observedPricingCoverage ?? []
   const editablePricingRows = pricingRows.filter((record) => record.enabled === true && record.supersededTime == null)
   const pricingCoverageGaps = props.pricingCoverageGaps ?? []
-  const copy = localCopy(props.locale)
+  const l = props.labels
   const missingPricingSessions = costSessions.filter((session) => session.totalCostUsd == null)
   const missingPricingGap = props.priceCoverage == null ? 0 : Math.max(0, 1 - props.priceCoverage)
-  const missingModelUnit = typeof props.locale === "string" && props.locale.startsWith("zh")
-    ? copy.models
-    : pricingCoverageGaps.length === 1 ? "model" : copy.models
-  const costSummary = costSessions.length === 0 ? copy.noSessions : `${costSessions.length} ${copy.sessions} · ${formatUsd(costSessions.reduce((sum, session) => sum + (session.totalCostUsd ?? 0), 0), props.locale)}`
-  const tokenSummary = tokenSessions.length === 0 ? copy.noSessions : `${tokenSessions.length} ${copy.sessions} · ${tokenSessions.reduce((sum, session) => sum + session.totalTokens, 0).toLocaleString(props.locale)} ${copy.tokens}`
-  const pricingSummary = pricingRows.length === 0 ? copy.unavailable : `${pricingRows.length} ${copy.records}`
-  const observedCoverageSummary = observedPricingCoverage.length === 0 ? copy.unavailable : `${observedPricingCoverage.length} ${copy.records}`
-  const freshnessSummary = pricingRows.length === 0 ? copy.unavailable : `${pricingRows.length} ${copy.records} · ${Math.round(missingPricingGap * 100)}% ${copy.gap}`
+  const missingModelUnit = pricingCoverageGaps.length === 1 ? l.modelSingular : l.models
+  const costSummary = costSessions.length === 0 ? l.noSessions : `${costSessions.length} ${l.sessions} · ${formatUsd(costSessions.reduce((sum, session) => sum + (session.totalCostUsd ?? 0), 0), props.locale)}`
+  const tokenSummary = tokenSessions.length === 0 ? l.noSessions : `${tokenSessions.length} ${l.sessions} · ${tokenSessions.reduce((sum, session) => sum + session.totalTokens, 0).toLocaleString(props.locale)} ${l.tokens}`
+  const pricingSummary = pricingRows.length === 0 ? l.unavailable : `${pricingRows.length} ${l.records}`
+  const observedCoverageSummary = observedPricingCoverage.length === 0 ? l.unavailable : `${observedPricingCoverage.length} ${l.records}`
+  const freshnessSummary = pricingRows.length === 0 ? l.unavailable : `${pricingRows.length} ${l.records} · ${Math.round(missingPricingGap * 100)}% ${l.gap}`
   const missingSummary = pricingCoverageGaps.length > 0
-    ? `${pricingCoverageGaps.length} ${missingModelUnit} · ${Math.round(missingPricingGap * 100)}% ${copy.gap}`
-    : missingPricingSessions.length === 0 ? copy.noGaps : `${missingPricingSessions.length} ${copy.sessions} · ${Math.round(missingPricingGap * 100)}% ${copy.gap}`
+    ? `${pricingCoverageGaps.length} ${missingModelUnit} · ${Math.round(missingPricingGap * 100)}% ${l.gap}`
+    : missingPricingSessions.length === 0 ? l.noGaps : `${missingPricingSessions.length} ${l.sessions} · ${Math.round(missingPricingGap * 100)}% ${l.gap}`
 
   function getDraft(record: PricingRecordResponse) {
     return drafts[record.id] ?? {
@@ -263,15 +241,15 @@ export function LeaderboardTables(props: {
   }
 
   function formatTime(value: number | null | undefined) {
-    return value ? new Date(value * 1000).toLocaleString(props.locale) : copy.unavailable
+    return value ? new Date(value * 1000).toLocaleString(props.locale) : l.unavailable
   }
 
   return (
     <section className="leaderboard-grid" aria-label={props.labels.title}>
-      <CollapsiblePanel title={props.labels.expensiveSessions} summary={costSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel title={props.labels.expensiveSessions} summary={costSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         <table>
           <tbody>
-            {costSessions.length === 0 ? <tr><td colSpan={2}>{copy.noSessionsAvailable}</td></tr> : costSessions.slice(0, 5).map((session) => (
+            {costSessions.length === 0 ? <tr><td colSpan={2}>{l.noSessionsAvailable}</td></tr> : costSessions.slice(0, 5).map((session) => (
               <tr key={session.sessionId}>
                 <td>{session.title}</td>
                 <td>{formatUsd(session.totalCostUsd, props.locale)}</td>
@@ -280,10 +258,10 @@ export function LeaderboardTables(props: {
           </tbody>
         </table>
       </CollapsiblePanel>
-      <CollapsiblePanel title={props.labels.tokenSessions} summary={tokenSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel title={props.labels.tokenSessions} summary={tokenSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         <table>
           <tbody>
-            {tokenSessions.length === 0 ? <tr><td colSpan={2}>{copy.noSessionsAvailable}</td></tr> : tokenSessions.slice(0, 5).map((session) => (
+            {tokenSessions.length === 0 ? <tr><td colSpan={2}>{l.noSessionsAvailable}</td></tr> : tokenSessions.slice(0, 5).map((session) => (
               <tr key={session.sessionId}>
                 <td>{session.title}</td>
                 <td>{session.totalTokens.toLocaleString()}</td>
@@ -292,9 +270,9 @@ export function LeaderboardTables(props: {
           </tbody>
         </table>
       </CollapsiblePanel>
-      <CollapsiblePanel title={props.labels.pricingDrilldown} summary={pricingSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel title={props.labels.pricingDrilldown} summary={pricingSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         {editablePricingRows.length === 0 ? (
-          <p className="pricing-card-empty">{copy.pricingRecordsUnavailable}</p>
+          <p className="pricing-card-empty">{l.pricingRecordsUnavailable}</p>
         ) : (
           <div className="pricing-card-grid">
             {editablePricingRows.map((record) => {
@@ -315,14 +293,14 @@ export function LeaderboardTables(props: {
                       <span className="pricing-card__vendor-id">{record.vendorModelId}</span>
                     </div>
                     <div className="pricing-card__badges" aria-label={`${props.labels.source} and ${props.labels.confidence}`}>
-                      <span>{formatEnum(record.sourceType, props.locale)}</span>
+                      <span>{formatEnum(record.sourceType, props.labels)}</span>
                       <span>{record.confidence}</span>
                     </div>
                   </div>
 
                   <div className="pricing-card__source">
                     <span>{props.labels.source}</span>
-                    {safeHttpUrl(record.sourceUrl) ? <a href={safeHttpUrl(record.sourceUrl)!}>{record.sourceUrl}</a> : <span>{copy.unavailable}</span>}
+                    {safeHttpUrl(record.sourceUrl) ? <a href={safeHttpUrl(record.sourceUrl)!}>{record.sourceUrl}</a> : <span>{l.unavailable}</span>}
                   </div>
 
                   <dl className="pricing-card__price-grid">
@@ -337,10 +315,10 @@ export function LeaderboardTables(props: {
                   <dl className="pricing-card__meta">
                     <div><dt>{props.labels.observed}</dt><dd>{formatTime(record.observedTime)}</dd></div>
                     <div><dt>{props.labels.effective}</dt><dd>{formatTime(record.effectiveTime)}</dd></div>
-                    <div><dt>{props.labels.superseded}</dt><dd>{record.supersededTime ? formatTime(record.supersededTime) : copy.current}</dd></div>
+                    <div><dt>{props.labels.superseded}</dt><dd>{record.supersededTime ? formatTime(record.supersededTime) : l.current}</dd></div>
                     <div><dt>{props.labels.manual}</dt><dd>{record.isManualOverride ? props.labels.yes : props.labels.no}</dd></div>
                     <div><dt>{props.labels.enabled}</dt><dd>{record.enabled ? props.labels.yes : props.labels.no}</dd></div>
-                    <div><dt>{props.labels.reasoningRule}</dt><dd>{formatEnum(record.reasoningBillingRule.kind, props.locale)}</dd></div>
+                    <div><dt>{props.labels.reasoningRule}</dt><dd>{formatEnum(record.reasoningBillingRule.kind, props.labels)}</dd></div>
                   </dl>
 
                   <div className="pricing-card__edit-grid" aria-label={`${props.labels.edit}: ${record.canonicalVendor} ${record.canonicalModel}`}>
@@ -385,9 +363,9 @@ export function LeaderboardTables(props: {
           </div>
         )}
       </CollapsiblePanel>
-      <CollapsiblePanel title={props.labels.observedProviderCoverage} summary={observedCoverageSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel title={props.labels.observedProviderCoverage} summary={observedCoverageSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         {observedPricingCoverage.length === 0 ? (
-          <p className="pricing-card-empty">{copy.noObservedCoverage}</p>
+          <p className="pricing-card-empty">{l.noObservedCoverage}</p>
         ) : (
           <div className="pricing-card-grid">
             {observedPricingCoverage.map((row) => {
@@ -399,26 +377,26 @@ export function LeaderboardTables(props: {
                     <div className="pricing-card__identity">
                       <strong className="pricing-card__model">{row.observedProviderId} / {row.observedModelId}</strong>
                       <span className="pricing-card__vendor-id">
-                        {row.canonicalVendor && row.canonicalModel ? `${copy.pricedVia} ${row.canonicalVendor} / ${row.canonicalModel}` : copy.unpriced}
+                        {row.canonicalVendor && row.canonicalModel ? `${l.pricedVia} ${row.canonicalVendor} / ${row.canonicalModel}` : l.unpriced}
                       </span>
                     </div>
                     <div className="pricing-card__badges" aria-label={`${props.labels.source} and ${props.labels.confidence}`}>
-                      <span>{formatEnum(row.resolutionStatus, props.locale)}</span>
-                      <span>{row.confidence ?? copy.unavailable}</span>
+                      <span>{formatEnum(row.resolutionStatus, props.labels)}</span>
+                      <span>{row.confidence ?? l.unavailable}</span>
                     </div>
                   </div>
 
                   <div className="pricing-card__source">
                     <span>{props.labels.source}</span>
-                    <span>{row.sourceType ? formatEnum(row.sourceType, props.locale) : copy.unavailable}</span>
+                    <span>{row.sourceType ? formatEnum(row.sourceType, props.labels) : l.unavailable}</span>
                     {sourceUrl ? <a href={sourceUrl}>{row.sourceUrl}</a> : null}
                   </div>
 
                   <dl className="pricing-card__meta">
-                    <div><dt>{copy.messages}</dt><dd>{row.messageCount.toLocaleString(props.locale)}</dd></div>
-                    <div><dt>{copy.tokens}</dt><dd>{row.totalTokens.toLocaleString(props.locale)}</dd></div>
-                    <div><dt>{copy.firstSeen}</dt><dd>{formatTime(row.firstSeen)}</dd></div>
-                    <div><dt>{copy.lastSeen}</dt><dd>{formatTime(row.lastSeen)}</dd></div>
+                    <div><dt>{l.messages}</dt><dd>{row.messageCount.toLocaleString(props.locale)}</dd></div>
+                    <div><dt>{l.tokens}</dt><dd>{row.totalTokens.toLocaleString(props.locale)}</dd></div>
+                    <div><dt>{l.firstSeen}</dt><dd>{formatTime(row.firstSeen)}</dd></div>
+                    <div><dt>{l.lastSeen}</dt><dd>{formatTime(row.lastSeen)}</dd></div>
                   </dl>
                 </article>
               )
@@ -426,10 +404,10 @@ export function LeaderboardTables(props: {
           </div>
         )}
       </CollapsiblePanel>
-      <CollapsiblePanel title={props.labels.pricingFreshness} summary={freshnessSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel title={props.labels.pricingFreshness} summary={freshnessSummary} defaultOpen scrollBody className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         <table>
           <tbody>
-            {pricingRows.length === 0 ? <tr><td colSpan={2}>{copy.freshnessUnavailable}</td></tr> : pricingRows.map((record) => (
+            {pricingRows.length === 0 ? <tr><td colSpan={2}>{l.freshnessUnavailable}</td></tr> : pricingRows.map((record) => (
               <tr key={`${record.id}-fresh`}>
                 <td>{record.canonicalVendor} / {record.canonicalModel}</td>
                 <td>{new Date((record.observedTime ?? record.effectiveTime) * 1000).toLocaleString(props.locale)}</td>
@@ -442,7 +420,7 @@ export function LeaderboardTables(props: {
           </tbody>
         </table>
       </CollapsiblePanel>
-      <CollapsiblePanel key={pricingCoverageGaps.length > 0 ? "missing-pricing-with-gaps" : "missing-pricing-no-gaps"} title={props.labels.missingPricing} summary={missingSummary} defaultOpen={pricingCoverageGaps.length > 0} className="leaderboard-panel" labels={{ expand: copy.expand, collapse: copy.collapse }}>
+      <CollapsiblePanel key={pricingCoverageGaps.length > 0 ? "missing-pricing-with-gaps" : "missing-pricing-no-gaps"} title={props.labels.missingPricing} summary={missingSummary} defaultOpen={pricingCoverageGaps.length > 0} className="leaderboard-panel" labels={{ expand: l.expand, collapse: l.collapse }}>
         <table>
           <tbody>
             {pricingCoverageGaps.length > 0 ? pricingCoverageGaps.map((gap) => {
@@ -451,12 +429,12 @@ export function LeaderboardTables(props: {
                 <tr key={`${gap.providerId}/${gap.modelId}-gap`}>
                   <td>{gap.providerId} / {gap.modelId}</td>
                   <td>
-                    <div>{gap.totalTokens.toLocaleString(props.locale)} {copy.tokens} · {gap.messageCount.toLocaleString(props.locale)} {copy.messages}</div>
+                    <div>{gap.totalTokens.toLocaleString(props.locale)} {l.tokens} · {gap.messageCount.toLocaleString(props.locale)} {l.messages}</div>
                     <dl className="pricing-gap-meta">
-                      <div><dt>{copy.firstSeen}</dt><dd>{formatTime(gap.firstSeen)}</dd></div>
-                      <div><dt>{copy.lastSeen}</dt><dd>{formatTime(gap.lastSeen)}</dd></div>
-                      <div><dt>{copy.reason}</dt><dd>{gap.reason}</dd></div>
-                      <div><dt>{copy.hint}</dt><dd>{gap.hint}</dd></div>
+                      <div><dt>{l.firstSeen}</dt><dd>{formatTime(gap.firstSeen)}</dd></div>
+                      <div><dt>{l.lastSeen}</dt><dd>{formatTime(gap.lastSeen)}</dd></div>
+                      <div><dt>{l.reason}</dt><dd>{gap.reason}</dd></div>
+                      <div><dt>{l.hint}</dt><dd>{gap.hint}</dd></div>
                     </dl>
                     <div className="pricing-card__edit-grid" aria-label={`${props.labels.missingPricing}: ${gap.providerId} ${gap.modelId}`}>
                       <label><span>{props.labels.input}</span><input className="control-placeholder__input" value={draft.inputPrice} onChange={(event) => setGapDraftField(gap, "inputPrice", event.target.value)} aria-label={missingPricingFieldLabel(gap, "Input price")} /></label>
@@ -472,7 +450,7 @@ export function LeaderboardTables(props: {
                   </td>
                 </tr>
               )
-            }) : missingPricingSessions.length === 0 ? <tr><td colSpan={2}>{copy.noMissingPricing}</td></tr> : missingPricingSessions.map((session) => (
+            }) : missingPricingSessions.length === 0 ? <tr><td colSpan={2}>{l.noMissingPricing}</td></tr> : missingPricingSessions.map((session) => (
               <tr key={`${session.sessionId}-gap`}>
                 <td>{session.title}</td>
                 <td>{props.labels.missingPricing}</td>

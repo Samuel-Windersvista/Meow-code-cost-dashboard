@@ -228,6 +228,28 @@ export default function DashboardPage() {
               updateStatus={updateStatus}
               lagSummary={formatBackendSyncSummary(diagnosticLagSeconds, copy)}
               locale={locale}
+              labels={{
+                backendOfflineUpdateDisabled: copy.backendOfflineUpdateDisabled,
+                unauthenticatedUpdateDisabled: copy.unauthenticatedUpdateDisabled,
+                connectingDashboard: copy.connectingDashboard,
+                tokenAuthFailed: copy.tokenAuthFailed,
+                tokenFileHelp: copy.tokenFileHelp,
+                lastSuccessfulSync: copy.lastSuccessfulSync,
+                lastUpdateAttempt: copy.lastUpdateAttempt,
+                connectDashboard: copy.connectDashboard,
+                dashboardToken: copy.dashboardToken,
+                tokenFilePath: copy.tokenFilePath,
+                localOnlyDescription: copy.localOnlyDescription,
+                startingBackend: copy.startingBackend,
+                restartingBackend: copy.restartingBackend,
+                checkingBackend: copy.checkingBackend,
+                backendControlFailed: copy.backendControlFailed,
+                backendControlCompleted: copy.backendControlCompleted,
+                backendControlHelp: copy.backendControlHelp,
+                startBackend: copy.startBackend,
+                restartBackend: copy.restartBackend,
+                retryStatus: copy.retryStatus,
+              }}
             />
           </div>
           <LanguageToggle language={language} label={copy.switchLanguage} onToggle={toggleLanguage} />
@@ -262,6 +284,10 @@ export default function DashboardPage() {
           investigateSignals: copy.investigateSignals,
           noWarnings: copy.noWarnings,
           selectedWindowBadge: formatWindowBadge(window, copy),
+          severityCritical: language === "zh" ? "严重" : "Critical",
+          severityWarning: language === "zh" ? "警告" : "Warning",
+          severityInfo: language === "zh" ? "信息" : "Info",
+          action: copy.action,
         }}
       />
 
@@ -308,6 +334,43 @@ export default function DashboardPage() {
               anomalyAlerts: copy.anomalyAlerts,
               topModelShare: copy.topModelShare,
               pricingIssues: copy.pricingIssues,
+              // chart copy fields
+              range: copy.range,
+              buckets: copy.buckets,
+              unit: copy.unit,
+              xAxis: copy.xAxis,
+              yAxis: copy.yAxis,
+              seriesDetails: copy.seriesDetails,
+              showing: copy.showing,
+              of: copy.of,
+              noActiveSpikes: copy.noActiveSpikes,
+              noSpikeAlerts: copy.noSpikeAlerts,
+              modelShareUnavailable: copy.modelShareUnavailable,
+              noOpenIssues: copy.noOpenIssues,
+              noPricingIssues: copy.noPricingIssues,
+              firstSeen: copy.firstSeen,
+              lastSeen: copy.lastSeen,
+              reason: copy.reason,
+              hint: copy.hint,
+              unavailable: copy.unavailable,
+              expand: copy.expand,
+              collapse: copy.collapse,
+              // unit/label fields
+              usdUnit: copy.usdUnit,
+              tokensUnit: copy.tokensUnit,
+              zeroSelectedMetric: copy.zeroSelectedMetric,
+              noActivity: copy.noActivity,
+              windowEmpty: copy.windowEmpty,
+              spikeSingular: copy.spikeSingular,
+              spikePlural: copy.spikePlural,
+              issueSingular: copy.issueSingular,
+              issuePlural: copy.issuePlural,
+              modelSingular: copy.modelSingular,
+              // enum fields
+              enumStale: copy.enumStale,
+              enumActive: copy.enumActive,
+              enumDisabled: copy.enumDisabled,
+              emptyState: copy.emptyState,
               controls: {
                 windowLabel: copy.windowLabel,
                 selectedWindow: copy.selectedWindow,
@@ -349,6 +412,17 @@ export default function DashboardPage() {
               activePricing: copy.activePricing,
               effectiveCost: copy.effectiveCost,
               source: copy.pricingSources,
+              // new dictionary fields
+              unavailable: copy.unavailable,
+              noActivity: copy.noActivity,
+              expand: copy.expand,
+              collapse: copy.collapse,
+              effectiveCostFormula: copy.effectiveCostFormula,
+              basedOnPricedTokens: copy.basedOnPricedTokens,
+              pricingCoverageLabel: copy.pricingCoverageLabel,
+              enumStale: copy.enumStale,
+              enumActive: copy.enumActive,
+              enumDisabled: copy.enumDisabled,
             }}
             locale={locale}
           />
@@ -370,7 +444,7 @@ export default function DashboardPage() {
               expensiveSessions: copy.expensiveSessions,
               tokenSessions: copy.tokenSessions,
               pricingDrilldown: copy.pricingDrilldown,
-              observedProviderCoverage: language === "zh" ? "观测供应商覆盖" : "Observed Provider Coverage",
+              observedProviderCoverage: copy.observedProviderCoverage,
               windowBreakdown: copy.selectedWindow,
               pricingFreshness: copy.freshness,
               title: copy.analysisPanels,
@@ -395,6 +469,43 @@ export default function DashboardPage() {
               reasoningRule: copy.reasoningRule,
               yes: copy.yes,
               no: copy.no,
+              // localCopy fields
+              noSessions: copy.noSessions,
+              sessions: copy.sessionsUnit,
+              unavailable: copy.unavailable,
+              records: copy.recordsUnit,
+              gap: copy.gap,
+              firstSeen: copy.firstSeen,
+              lastSeen: copy.lastSeen,
+              reason: copy.reason,
+              hint: copy.hint,
+              noGaps: copy.noGaps,
+              noSessionsAvailable: copy.noSessionsAvailable,
+              pricingRecordsUnavailable: copy.pricingRecordsUnavailable,
+              current: copy.current,
+              freshnessUnavailable: copy.freshnessUnavailable,
+              noMissingPricing: copy.noMissingPricing,
+              noObservedCoverage: copy.noObservedCoverage,
+              pricedVia: copy.pricedVia,
+              unpriced: copy.unpriced,
+              expand: copy.expand,
+              collapse: copy.collapse,
+              models: copy.modelsUnit,
+              messages: copy.messagesUnit,
+              // formatEnum fields
+              enumManual: copy.enumManual,
+              enumOfficial: copy.enumOfficial,
+              enumOpenRouter: copy.enumOpenRouter,
+              enumWebSearch: copy.enumWebSearch,
+              enumPerToken: copy.enumPerToken,
+              enumIncludedInOutput: copy.enumIncludedInOutput,
+              enumStale: copy.enumStale,
+              enumActive: copy.enumActive,
+              enumDisabled: copy.enumDisabled,
+              enumPriced: copy.enumPriced,
+              enumMissing: copy.enumMissing,
+              // singular/plural
+              modelSingular: copy.modelSingular,
             }}
           />
         </div>

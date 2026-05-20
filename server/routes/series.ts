@@ -31,6 +31,7 @@ export function seriesRoutes(analyticsDbPath: string, pricingDbPath: string) {
     const granularity = parseGranularity(req.params.granularity)
     const metrics = parseMetrics(req.query.metrics)
     const rawWindow = req.query.window
+    const source = typeof req.query.source === "string" ? req.query.source : undefined
 
     if (!granularity || !metrics) {
       res.status(400).json({ error: "invalid_series_request" })
@@ -63,6 +64,7 @@ export function seriesRoutes(analyticsDbPath: string, pricingDbPath: string) {
         granularity,
         metrics,
         window: parsedWindow ?? "all",
+        source,
       }))
     } catch (error) {
       if (tryRespondWithAnalyticsBusy(res, error)) {

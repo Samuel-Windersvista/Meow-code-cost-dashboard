@@ -109,6 +109,98 @@ type Dictionary = {
   no: string
   expand: string
   collapse: string
+  // Generic labels
+  unavailable: string
+  firstSeen: string
+  lastSeen: string
+  reason: string
+  hint: string
+  tokensUnit: string
+  sessionsUnit: string
+  recordsUnit: string
+  messagesUnit: string
+  modelsUnit: string
+  current: string
+  action: string
+  ok: string
+  noSessions: string
+  noGaps: string
+  noSessionsAvailable: string
+  pricingRecordsUnavailable: string
+  freshnessUnavailable: string
+  noMissingPricing: string
+  noObservedCoverage: string
+  pricedVia: string
+  unpriced: string
+  gap: string
+  estimated: string
+  emptyState: string
+  // Backend management
+  connectDashboard: string
+  dashboardToken: string
+  tokenFilePath: string
+  lastSuccessfulSync: string
+  lastUpdateAttempt: string
+  startBackend: string
+  restartBackend: string
+  retryStatus: string
+  backendOfflineUpdateDisabled: string
+  unauthenticatedUpdateDisabled: string
+  connectingDashboard: string
+  tokenAuthFailed: string
+  tokenFileHelp: string
+  localOnlyDescription: string
+  startingBackend: string
+  restartingBackend: string
+  checkingBackend: string
+  backendControlFailed: string
+  backendControlCompleted: string
+  backendControlHelp: string
+  // Chart strings
+  range: string
+  buckets: string
+  unit: string
+  xAxis: string
+  yAxis: string
+  seriesDetails: string
+  of: string
+  showing: string
+  noActiveSpikes: string
+  noSpikeAlerts: string
+  modelShareUnavailable: string
+  noOpenIssues: string
+  noPricingIssues: string
+  noActivity: string
+  zeroSelectedMetric: string
+  usdUnit: string
+  spikeSingular: string
+  spikePlural: string
+  issueSingular: string
+  issuePlural: string
+  modelSingular: string
+  windowEmpty: string
+  effectiveCostFormula: string
+  basedOnPricedTokens: string
+  pricingCoverageLabel: string
+  observedProviderCoverage: string
+  // Enum display values
+  enumManual: string
+  enumOfficial: string
+  enumOpenRouter: string
+  enumWebSearch: string
+  enumPerToken: string
+  enumIncludedInOutput: string
+  enumStale: string
+  enumActive: string
+  enumDisabled: string
+  enumPriced: string
+  enumMissing: string
+  // Multi-source
+  sourceLabel: string
+  sourceOpencode: string
+  sourceHermes: string
+  allSources: string
+  selectSource: string
 }
 
 const DICTIONARY: Record<DashboardLanguage, Dictionary> = {
@@ -219,6 +311,98 @@ const DICTIONARY: Record<DashboardLanguage, Dictionary> = {
     no: "No",
     expand: "Expand",
     collapse: "Collapse",
+    // Generic labels
+    unavailable: "Unavailable",
+    firstSeen: "First seen",
+    lastSeen: "Last seen",
+    reason: "Reason",
+    hint: "Hint",
+    tokensUnit: "tokens",
+    sessionsUnit: "sessions",
+    recordsUnit: "records",
+    messagesUnit: "messages",
+    modelsUnit: "models",
+    current: "Current",
+    action: "Action",
+    ok: "OK",
+    noSessions: "No sessions",
+    noGaps: "No gaps",
+    noSessionsAvailable: "No sessions available",
+    pricingRecordsUnavailable: "Pricing records unavailable",
+    freshnessUnavailable: "Freshness unavailable",
+    noMissingPricing: "No missing pricing detected",
+    noObservedCoverage: "No observed provider coverage",
+    pricedVia: "priced via",
+    unpriced: "unpriced",
+    gap: "gap",
+    estimated: "estimated",
+    emptyState: "No usage data for the selected source and window.",
+    // Backend management
+    connectDashboard: "Connect local dashboard",
+    dashboardToken: "Dashboard token",
+    tokenFilePath: "Token file path",
+    lastSuccessfulSync: "Last successful sync",
+    lastUpdateAttempt: "Last update attempt",
+    startBackend: "Start Backend",
+    restartBackend: "Restart Backend",
+    retryStatus: "Retry Status",
+    backendOfflineUpdateDisabled: "Backend is offline; start the local dashboard service before updating.",
+    unauthenticatedUpdateDisabled: "Sign in with the local dashboard token before updating.",
+    connectingDashboard: "Connecting local dashboard...",
+    tokenAuthFailed: "Local token authentication failed.",
+    tokenFileHelp: "Uses the localhost token file to authenticate this browser.",
+    localOnlyDescription: "Local browser only: submit a local token or the default .run/dashboard.token file through the localhost-only endpoint.",
+    startingBackend: "Starting backend...",
+    restartingBackend: "Restarting backend...",
+    checkingBackend: "Checking backend status...",
+    backendControlFailed: "Backend control action failed.",
+    backendControlCompleted: "Backend control command completed; use the local token form if not connected.",
+    backendControlHelp: "Use the Vite-local control endpoint to start or restart the backend.",
+    // Chart strings
+    range: "Range",
+    buckets: "buckets",
+    unit: "Unit",
+    xAxis: "X-axis: Time",
+    yAxis: "Y-axis",
+    seriesDetails: "Series Explorer Details",
+    of: "of",
+    showing: "Showing",
+    noActiveSpikes: "No active spikes",
+    noSpikeAlerts: "No spike alerts detected for the selected window.",
+    modelShareUnavailable: "Model-share breakdown is unavailable for this data window.",
+    noOpenIssues: "No open issues",
+    noPricingIssues: "No lifetime pricing issues are currently visible.",
+    noActivity: "No activity",
+    zeroSelectedMetric: "0 selected metric",
+    usdUnit: "USD",
+    spikeSingular: "spike",
+    spikePlural: "spikes",
+    issueSingular: "issue",
+    issuePlural: "issues",
+    modelSingular: "model",
+    windowEmpty: "Empty window",
+    effectiveCostFormula: "Formula: lifetime spend / lifetime tokens x 1,000,000",
+    basedOnPricedTokens: "Based on priced tokens",
+    pricingCoverageLabel: "pricing coverage",
+    observedProviderCoverage: "Observed Provider Coverage",
+    // Enum display values
+    enumManual: "Manual",
+    enumOfficial: "Official",
+    enumOpenRouter: "OpenRouter",
+    enumWebSearch: "Web Search",
+    enumPerToken: "Per Token",
+    enumIncludedInOutput: "Included in Output",
+    enumStale: "Stale",
+    enumActive: "Active",
+    enumDisabled: "Disabled",
+    enumPriced: "Priced",
+    enumMissing: "Missing",
+    // Multi-source
+    sourceLabel: "Data Source",
+    sourceOpencode: "OpenCode",
+    sourceHermes: "Hermes",
+    allSources: "All Sources",
+    selectSource: "Select source",
   },
   zh: {
     eyebrow: "成本指挥台",
@@ -327,10 +511,102 @@ const DICTIONARY: Record<DashboardLanguage, Dictionary> = {
     no: "否",
     expand: "展开",
     collapse: "收起",
+    // Generic labels
+    unavailable: "不可用",
+    firstSeen: "首次出现",
+    lastSeen: "最后出现",
+    reason: "原因",
+    hint: "提示",
+    tokensUnit: "令牌",
+    sessionsUnit: "会话",
+    recordsUnit: "记录",
+    messagesUnit: "消息",
+    modelsUnit: "模型",
+    current: "当前",
+    action: "操作",
+    ok: "确定",
+    noSessions: "无会话",
+    noGaps: "无缺口",
+    noSessionsAvailable: "无可用会话",
+    pricingRecordsUnavailable: "定价记录不可用",
+    freshnessUnavailable: "新鲜度不可用",
+    noMissingPricing: "未检测到缺失定价",
+    noObservedCoverage: "未检测到供应商覆盖",
+    pricedVia: "定价自",
+    unpriced: "未定价",
+    gap: "缺口",
+    estimated: "估算",
+    emptyState: "所选数据源和时间窗口无用量数据。",
+    // Backend management
+    connectDashboard: "连接本地仪表盘",
+    dashboardToken: "仪表盘令牌",
+    tokenFilePath: "令牌文件路径",
+    lastSuccessfulSync: "上次成功同步",
+    lastUpdateAttempt: "上次更新尝试",
+    startBackend: "启动后端",
+    restartBackend: "重启后端",
+    retryStatus: "重试状态",
+    backendOfflineUpdateDisabled: "后端离线；请先启动本地仪表盘服务再更新。",
+    unauthenticatedUpdateDisabled: "请先使用本地仪表盘令牌登录再更新。",
+    connectingDashboard: "正在连接本地仪表盘...",
+    tokenAuthFailed: "本地令牌认证失败。",
+    tokenFileHelp: "使用本地令牌文件认证此浏览器。",
+    localOnlyDescription: "仅限本地浏览器：通过 localhost 端点提交本地令牌或默认的 .run/dashboard.token 文件。",
+    startingBackend: "正在启动后端...",
+    restartingBackend: "正在重启后端...",
+    checkingBackend: "正在检查后端状态...",
+    backendControlFailed: "后端控制操作失败。",
+    backendControlCompleted: "后端控制命令已完成；如未连接请使用本地令牌表单。",
+    backendControlHelp: "使用 Vite 本地控制端点启动或重启后端。",
+    // Chart strings
+    range: "范围",
+    buckets: "个桶",
+    unit: "单位",
+    xAxis: "X轴：时间",
+    yAxis: "Y轴",
+    seriesDetails: "序列浏览器详情",
+    of: "共",
+    showing: "显示",
+    noActiveSpikes: "无活跃尖峰",
+    noSpikeAlerts: "所选窗口未检测到尖峰告警。",
+    modelShareUnavailable: "此数据窗口的模型占比不可用。",
+    noOpenIssues: "无待处理问题",
+    noPricingIssues: "当前无可视的累计定价问题。",
+    noActivity: "无活动",
+    zeroSelectedMetric: "0 个选中指标",
+    usdUnit: "美元",
+    spikeSingular: "个尖峰",
+    spikePlural: "个尖峰",
+    issueSingular: "个问题",
+    issuePlural: "个问题",
+    modelSingular: "个模型",
+    windowEmpty: "空窗口",
+    effectiveCostFormula: "公式：累计花费 / 累计令牌 x 1,000,000",
+    basedOnPricedTokens: "基于已定价令牌",
+    pricingCoverageLabel: "定价覆盖",
+    observedProviderCoverage: "已观测供应商覆盖",
+    // Enum display values
+    enumManual: "手动",
+    enumOfficial: "官方",
+    enumOpenRouter: "OpenRouter",
+    enumWebSearch: "网络搜索",
+    enumPerToken: "按令牌",
+    enumIncludedInOutput: "含于输出",
+    enumStale: "过期",
+    enumActive: "活跃",
+    enumDisabled: "已禁用",
+    enumPriced: "已定价",
+    enumMissing: "缺失",
+    // Multi-source
+    sourceLabel: "数据源",
+    sourceOpencode: "OpenCode",
+    sourceHermes: "Hermes",
+    allSources: "全部数据源",
+    selectSource: "选择数据源",
   },
 }
 
-export function useI18n(initialLanguage: DashboardLanguage = "en") {
+export function useI18n(initialLanguage: DashboardLanguage = "zh") {
   const [language, setLanguage] = useState<DashboardLanguage>(initialLanguage)
 
   const copy = useMemo(() => DICTIONARY[language], [language])

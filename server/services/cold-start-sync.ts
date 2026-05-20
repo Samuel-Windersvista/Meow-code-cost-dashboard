@@ -2,7 +2,7 @@ import fs from "node:fs"
 
 import { openAnalyticsReadonlyDb } from "../storage/db"
 import { hasActiveSyncRefresh, queueSyncRefresh } from "./dashboard-analytics"
-import { RAW_OPENCODE_MESSAGES_CURSOR_KEY, RAW_OPENCODE_SESSIONS_CURSOR_KEY } from "./raw-opencode"
+import { rawOpencodeMessagesCursorKey, rawOpencodeSessionsCursorKey } from "./raw-opencode"
 
 type CountRow = {
   total: number
@@ -19,8 +19,10 @@ const priorSyncEvidenceKeys = new Set([
   "last_refresh_completed_at",
   "last_successful_sync_time",
   "last_sync_time",
-  RAW_OPENCODE_MESSAGES_CURSOR_KEY,
-  RAW_OPENCODE_SESSIONS_CURSOR_KEY,
+  "raw_opencode_messages",
+  "raw_opencode_sessions",
+  rawOpencodeMessagesCursorKey("opencode"),
+  rawOpencodeSessionsCursorKey("opencode"),
   "sync_requested_at",
   "sync_started_at",
   "sync_completed_at",
@@ -77,10 +79,10 @@ export function shouldQueueColdStartAnalyticsRefresh(analyticsDbPath: string, ra
   }
 }
 
-export function queueColdStartAnalyticsRefresh(analyticsDbPath: string, rawDbPath: string) {
+export function queueColdStartAnalyticsRefresh(analyticsDbPath: string, rawDbPath: string, sourceLabel = "opencode") {
   if (!shouldQueueColdStartAnalyticsRefresh(analyticsDbPath, rawDbPath)) {
     return null
   }
 
-  return queueSyncRefresh(analyticsDbPath, rawDbPath)
+  return queueSyncRefresh(analyticsDbPath, rawDbPath, sourceLabel)
 }

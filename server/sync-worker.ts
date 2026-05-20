@@ -5,6 +5,7 @@ import { syncRawOpencodeToAnalytics } from "./services/dashboard-analytics"
 type SyncWorkerPayload = {
   rawDatabasePath: string
   analyticsDatabasePath: string
+  sourceLabel: string
   now: number
   resultPath: string
   errorPath: string
@@ -22,7 +23,7 @@ function main() {
 
   const payload = JSON.parse(fs.readFileSync(payloadPath, "utf8")) as SyncWorkerPayload
   try {
-    const result = syncRawOpencodeToAnalytics(payload.rawDatabasePath, payload.analyticsDatabasePath, payload.now)
+    const result = syncRawOpencodeToAnalytics(payload.rawDatabasePath, payload.analyticsDatabasePath, payload.sourceLabel, payload.now)
     fs.writeFileSync(payload.resultPath, JSON.stringify(result), "utf8")
   } catch (error) {
     fs.writeFileSync(payload.errorPath, errorMessage(error), "utf8")

@@ -13,10 +13,23 @@ type LoadConfigOptions = {
   envFilePath?: string
 }
 
+export type DataSourceConfig = {
+  label: string
+  path: string
+  enabled: boolean
+}
+
+const dataSourceSchema = z.object({
+  label: z.string().trim().min(1),
+  path: z.string().trim().min(1),
+  enabled: z.boolean(),
+})
+
 const fileConfigSchema = z.object({
   port: z.number().int().positive().max(65535).optional(),
   host: z.string().trim().min(1).optional(),
   opencodeDbPath: z.string().trim().min(1).optional(),
+  dataSources: z.array(dataSourceSchema).optional(),
   analyticsDbPath: z.string().trim().min(1).optional(),
   pricingDbPath: z.string().trim().min(1).optional(),
   dashboardToken: z.string().trim().min(1).optional(),
@@ -26,6 +39,7 @@ const fileConfigSchema = z.object({
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().max(65535).default(41777),
   HOST: z.string().trim().min(1).default("127.0.0.1"),
+  DATASOURCES: z.string().trim().min(1).optional(),
   OPENCODE_DB_PATH: z.string().trim().min(1).default(path.join(os.homedir(), ".local", "share", "opencode", "opencode.db")),
   ANALYTICS_DB_PATH: z.string().trim().min(1).default("./.run/analytics.db"),
   PRICING_DB_PATH: z.string().trim().min(1).default(path.join(os.homedir(), ".local", "share", "opencode-cost-observatory", "pricing.db")),
@@ -36,7 +50,7 @@ const envSchema = z.object({
 export type AppConfig = {
   port: number
   host: string
-  opencodeDbPath: string
+  dataSources: DataSourceConfig[]
   analyticsDbPath: string
   pricingDbPath: string
   dashboardToken: string
@@ -110,12 +124,27 @@ export function loadConfig(
   const env = envSchema.parse({
     PORT: input.PORT ?? envFileConfig.PORT ?? fileConfig.port,
     HOST: input.HOST ?? envFileConfig.HOST ?? fileConfig.host,
+    DATASOURCES: input.DATASOURCES ?? envFileConfig.DATASOURCES ?? undefined,
     OPENCODE_DB_PATH: input.OPENCODE_DB_PATH ?? envFileConfig.OPENCODE_DB_PATH ?? fileConfig.opencodeDbPath,
     ANALYTICS_DB_PATH: input.ANALYTICS_DB_PATH ?? envFileConfig.ANALYTICS_DB_PATH ?? fileConfig.analyticsDbPath,
     PRICING_DB_PATH: input.PRICING_DB_PATH ?? envFileConfig.PRICING_DB_PATH ?? fileConfig.pricingDbPath,
     DASHBOARD_TOKEN: input.DASHBOARD_TOKEN ?? envFileConfig.DASHBOARD_TOKEN ?? fileConfig.dashboardToken,
     DASHBOARD_TOKEN_FILE: input.DASHBOARD_TOKEN_FILE ?? envFileConfig.DASHBOARD_TOKEN_FILE ?? fileConfig.dashboardTokenFile,
   })
+
+  // Resolve data sources with priority:
+  //   1. DATASOURCES from process env (already merged above)
+  //   2. dataSources from dashboard.config.json (fileConfig)
+  //   3. Fallback: single source from OPENCODE_DB_PATH chain
+  const dataSources: DataSourceConfig[] = (() => {
+    if (env.DATASOURCES) {
+      return z.array(dataSourceSchema).parse(JSON.parse(env.DATASOURCES))
+    }
+    if (fileConfig.dataSources && fileConfig.dataSources.length > 0) {
+      return fileConfig.dataSources as DataSourceConfig[]
+    }
+    return [{ label: "opencode", path: resolveProjectPath(env.OPENCODE_DB_PATH), enabled: true }]
+  })()
 
   const dashboardTokenFilePath = env.DASHBOARD_TOKEN_FILE ? resolveProjectPath(env.DASHBOARD_TOKEN_FILE) : undefined
   const dashboardToken = env.DASHBOARD_TOKEN
@@ -128,10 +157,15 @@ export function loadConfig(
   return {
     port: env.PORT,
     host: env.HOST,
-    opencodeDbPath: resolveProjectPath(env.OPENCODE_DB_PATH),
+    dataSources,
     analyticsDbPath: resolveProjectPath(env.ANALYTICS_DB_PATH),
     pricingDbPath: resolveProjectPath(env.PRICING_DB_PATH),
     dashboardToken,
     dashboardTokenFilePath,
   }
+}
+
+export function getDefaultDataSourcePath(config: AppConfig): string | undefined {
+  const enabled = config.dataSources.filter((ds) => ds.enabled)
+  return enabled.length > 0 ? enabled[0].path : undefined
 }

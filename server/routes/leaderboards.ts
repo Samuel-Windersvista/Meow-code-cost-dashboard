@@ -21,13 +21,14 @@ export function leaderboardsRoutes(analyticsDbPath: string, pricingDbPath: strin
 
   router.get("/leaderboards/token-sessions", (req, res) => {
     const limit = parseLimit(req.query.limit)
+    const source = typeof req.query.source === "string" ? req.query.source : undefined
     if (Number.isNaN(limit)) {
       res.status(400).json({ error: "invalid_leaderboard_request" })
       return
     }
 
     try {
-      res.json(buildTokenSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined))
+      res.json(buildTokenSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined, source))
     } catch (error) {
       if (tryRespondWithAnalyticsBusy(res, error)) {
         return
@@ -38,13 +39,14 @@ export function leaderboardsRoutes(analyticsDbPath: string, pricingDbPath: strin
 
   router.get("/leaderboards/cost-sessions", (req, res) => {
     const limit = parseLimit(req.query.limit)
+    const source = typeof req.query.source === "string" ? req.query.source : undefined
     if (Number.isNaN(limit)) {
       res.status(400).json({ error: "invalid_leaderboard_request" })
       return
     }
 
     try {
-      res.json(buildCostSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined))
+      res.json(buildCostSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined, source))
     } catch (error) {
       if (tryRespondWithAnalyticsBusy(res, error)) {
         return
@@ -55,13 +57,14 @@ export function leaderboardsRoutes(analyticsDbPath: string, pricingDbPath: strin
 
   router.get("/leaderboards/expensive-sessions", (req, res) => {
     const limit = parseLimit(req.query.limit)
+    const source = typeof req.query.source === "string" ? req.query.source : undefined
     if (Number.isNaN(limit)) {
       res.status(400).json({ error: "invalid_leaderboard_request" })
       return
     }
 
     try {
-      const result = buildCostSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined)
+      const result = buildCostSessionLeaderboard(analyticsDbPath, pricingDbPath, limit ?? undefined, source)
       res.json({ ...result, rows: result.sessions })
     } catch (error) {
       if (tryRespondWithAnalyticsBusy(res, error)) {

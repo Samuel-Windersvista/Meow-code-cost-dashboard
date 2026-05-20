@@ -55,9 +55,8 @@ function formatLastSync(value: number | null, neverLabel: string, locale: Intl.L
   return new Date(value * 1000).toLocaleString(locale)
 }
 
-function formatWindowSpendChip(value: string, labels: { selectedWindowBadge: string }, locale: Intl.LocalesArgument) {
-  const zh = typeof locale === "string" && locale.startsWith("zh")
-  return zh ? `${labels.selectedWindowBadge}成本 ${value}` : `${labels.selectedWindowBadge} ${value}`
+function formatWindowSpendChip(value: string, labels: { selectedWindowBadge: string }) {
+  return `${labels.selectedWindowBadge} ${value}`
 }
 
 export function calculateLifetimeShare(lifetimeSpendUsd: number | null, windowSpendUsd: number | null) {
@@ -106,6 +105,10 @@ export function HeroCards(props: {
     investigateSignals: string
     noWarnings: string
     selectedWindowBadge: string
+    severityCritical: string
+    severityWarning: string
+    severityInfo: string
+    action: string
   }
   isLoading: boolean
   lastSyncEpochSeconds: number | null
@@ -114,7 +117,6 @@ export function HeroCards(props: {
   const { overview, labels, isLoading, activeAlerts, lastSyncEpochSeconds, locale } = props
   const alertItems = props.activeAlertItems ?? []
   const visibleAlertCount = props.activeAlertItems === undefined ? activeAlerts : alertItems.length
-  const zh = typeof locale === "string" && locale.startsWith("zh")
   const lifetimeShare = calculateLifetimeShare(overview.lifetimeSpendUsd, overview.windowSpendUsd)
   const sparkline = buildSparkline(props.trendPoints)
 
@@ -127,7 +129,7 @@ export function HeroCards(props: {
         </div>
         <strong className="hero-card__value">{isLoading ? "…" : formatUsd(overview.lifetimeSpendUsd, locale)}</strong>
         <div className="hero-card__chip-row">
-          <span className="hero-card__chip hero-card__chip--warm">{formatWindowSpendChip(isLoading ? "…" : formatUsd(overview.windowSpendUsd, locale), labels, locale)}</span>
+          <span className="hero-card__chip hero-card__chip--warm">{formatWindowSpendChip(isLoading ? "…" : formatUsd(overview.windowSpendUsd, locale), labels)}</span>
           <span className="hero-card__chip">{lifetimeShare == null || isLoading ? "--" : `${lifetimeShare}${labels.percentOfLifetime}`}</span>
         </div>
         <div className="hero-card__meta">
@@ -157,9 +159,9 @@ export function HeroCards(props: {
             {alertItems.map((item) => (
               <li key={item.id} className="hero-card__alert-item">
                 <strong>{item.title}</strong>
-                <small>{zh ? ({ critical: "严重", warning: "警告", info: "信息" }[item.severity] ?? item.severity) : item.severity.slice(0, 1).toUpperCase() + item.severity.slice(1)}</small>
+                <small>{({ critical: labels.severityCritical, warning: labels.severityWarning, info: labels.severityInfo }[item.severity] ?? item.severity)}</small>
                 <span>{item.detail}</span>
-                <span>{zh ? "操作" : "Action"}: {item.action}</span>
+                <span>{labels.action}: {item.action}</span>
               </li>
             ))}
           </ul>

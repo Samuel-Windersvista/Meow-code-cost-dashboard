@@ -72,6 +72,20 @@ function hasNonBlankPricingSourceUrlConstraint(tableSql: string) {
     || /length\s*\(\s*trim\s*\(\s*source_url\s*\)\s*\)\s*>\s*0/i.test(tableSql)
 }
 
+export function migrateAnalyticsSchema(sqlite: SqliteDatabase) {
+  const analyticsTables = [
+    { name: "message_usage_fact", column: "source_label" },
+    { name: "session_tree_edge", column: "source_label" },
+  ]
+  for (const { name, column } of analyticsTables) {
+    if (!hasTable(sqlite, name)) continue
+    const columns = getColumnNames(sqlite, name)
+    if (!columns.has(column)) {
+      sqlite.exec(`alter table ${name} add column ${column} text not null default 'opencode'`)
+    }
+  }
+}
+
 export function normalizeLegacySyncState(sqlite: SqliteDatabase) {
   if (!hasTable(sqlite, "sync_state")) {
     return

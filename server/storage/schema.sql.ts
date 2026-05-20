@@ -3,6 +3,7 @@ import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core
 
 export const message_usage_fact = sqliteTable("message_usage_fact", {
   message_id: text().primaryKey(),
+  source_label: text().notNull().default("opencode"),
   session_id: text().notNull(),
   project_id: text().notNull(),
   parent_message_id: text(),
@@ -19,6 +20,7 @@ export const message_usage_fact = sqliteTable("message_usage_fact", {
 
 export const session_tree_edge = sqliteTable("session_tree_edge", {
   session_id: text().primaryKey(),
+  source_label: text().notNull().default("opencode"),
   parent_session_id: text(),
   project_id: text().notNull(),
   directory: text().notNull(),
@@ -95,6 +97,7 @@ create table if not exists sync_state (
 
 create table if not exists session_tree_edge (
   session_id text primary key,
+  source_label text not null default 'opencode',
   parent_session_id text,
   project_id text not null,
   directory text not null,
@@ -104,6 +107,7 @@ create table if not exists session_tree_edge (
 
 create table if not exists message_usage_fact (
   message_id text primary key,
+  source_label text not null default 'opencode',
   session_id text not null,
   project_id text not null,
   parent_message_id text,

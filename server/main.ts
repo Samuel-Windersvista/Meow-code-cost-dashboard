@@ -2,7 +2,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import express from "express"
 import { authRoutes, requireDashboardToken } from "./auth"
-import { AppConfig, loadConfig } from "./config"
+import { AppConfig, getDefaultDataSourcePath, loadConfig } from "./config"
 import { diagnosticsRoutes } from "./routes/diagnostics"
 import { healthRoutes } from "./routes/health"
 import { leaderboardsRoutes } from "./routes/leaderboards"
@@ -44,12 +44,12 @@ export function createServer(_config: AppConfig = loadConfig(), options: CreateS
   app.use(seriesRoutes(_config.analyticsDbPath, _config.pricingDbPath))
   app.use(leaderboardsRoutes(_config.analyticsDbPath, _config.pricingDbPath))
   app.use(pricingRoutes(_config.analyticsDbPath, _config.pricingDbPath))
-  app.use(syncRoutes(_config.analyticsDbPath, _config.opencodeDbPath))
+  app.use(syncRoutes(_config.analyticsDbPath, _config.dataSources))
   app.use("/api", overviewRoutes(_config.analyticsDbPath, _config.pricingDbPath))
   app.use("/api", seriesRoutes(_config.analyticsDbPath, _config.pricingDbPath))
   app.use("/api", leaderboardsRoutes(_config.analyticsDbPath, _config.pricingDbPath))
   app.use("/api", pricingRoutes(_config.analyticsDbPath, _config.pricingDbPath))
-  app.use("/api", syncRoutes(_config.analyticsDbPath, _config.opencodeDbPath))
+  app.use("/api", syncRoutes(_config.analyticsDbPath, _config.dataSources))
   return app
 }
 
@@ -66,7 +66,7 @@ export async function startServer(config: AppConfig = loadConfig(), options: Cre
         console.log("vite client is separate; run npm run dev for the browser scaffold")
       }
       try {
-        queueColdStartAnalyticsRefresh(config.analyticsDbPath, config.opencodeDbPath)
+        queueColdStartAnalyticsRefresh(config.analyticsDbPath, getDefaultDataSourcePath(config)!)
       } catch (error) {
         console.warn("cold-start analytics refresh was not queued", error)
       }

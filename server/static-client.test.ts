@@ -77,7 +77,7 @@ test("createServer with builtClientDir mounts public routes before auth wall", a
   const app = createServer({
     port: 0,
     host: "127.0.0.1",
-    opencodeDbPath,
+    dataSources: [{ label: "opencode", path: opencodeDbPath, enabled: true }],
     analyticsDbPath,
     pricingDbPath,
     dashboardToken: "test-token",

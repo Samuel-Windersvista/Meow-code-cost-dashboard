@@ -12,7 +12,7 @@ import { message_usage_fact, pricing_record, session_tree_edge, sync_state } fro
 import { queueSyncRefresh, setSyncRefreshRunnerForTests } from "./dashboard-analytics"
 import { queueColdStartAnalyticsRefresh, shouldQueueColdStartAnalyticsRefresh } from "./cold-start-sync"
 import { createPricingRecordDraft } from "./pricing-registry"
-import { RAW_OPENCODE_MESSAGES_CURSOR_KEY } from "./raw-opencode"
+import { rawOpencodeMessagesCursorKey } from "./raw-opencode"
 
 function createPaths(prefix: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
@@ -164,7 +164,7 @@ test("shouldQueueColdStartAnalyticsRefresh treats actual raw OpenCode cursor key
 
   const db = openAnalyticsDb(analyticsDbPath)
   try {
-    db.insert(sync_state).values({ key: RAW_OPENCODE_MESSAGES_CURSOR_KEY, value: "1746493200" }).run()
+    db.insert(sync_state).values({ key: rawOpencodeMessagesCursorKey("opencode"), value: "1746493200" }).run()
   } finally {
     db.sqlite.close()
   }
@@ -188,7 +188,7 @@ test("startServer queues one cold-start refresh after the backend is listening",
     server = await startServer({
       port: 0,
       host: "127.0.0.1",
-      opencodeDbPath: rawDbPath,
+      dataSources: [{ label: "opencode", path: rawDbPath, enabled: true }],
       analyticsDbPath,
       pricingDbPath,
       dashboardToken: "test-token",
@@ -251,7 +251,7 @@ test("startServer rebuilds a missing analytics cache without replacing durable p
     server = await startServer({
       port: 0,
       host: "127.0.0.1",
-      opencodeDbPath: rawDbPath,
+      dataSources: [{ label: "opencode", path: rawDbPath, enabled: true }],
       analyticsDbPath,
       pricingDbPath,
       dashboardToken: "test-token",
@@ -277,7 +277,7 @@ test("shouldQueueColdStartAnalyticsRefresh skips when another sync job is alread
 
   setSyncRefreshRunnerForTests(() => new Promise(() => {}))
   try {
-    queueSyncRefresh(analyticsDbPath, rawDbPath, 1_746_493_200)
+    queueSyncRefresh(analyticsDbPath, rawDbPath, "opencode", 1_746_493_200)
     assert.equal(shouldQueueColdStartAnalyticsRefresh(analyticsDbPath, rawDbPath), false)
   } finally {
     setSyncRefreshRunnerForTests(null)

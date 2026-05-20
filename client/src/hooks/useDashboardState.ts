@@ -85,6 +85,9 @@ const ALERT_COPY = {
     syncLagDetail(lagSeconds: number) {
       return `Last sync is ${Math.round(lagSeconds / 60)}m behind the local store.`
     },
+    noSourceDataTitle: "No data for selected source",
+    noSourceDataAction: "Switch source",
+    noSourceDataDetail: "The selected data source has no usage data for the current window.",
   },
   zh: {
     backendOfflineTitle: "后端离线",
@@ -114,6 +117,9 @@ const ALERT_COPY = {
     syncLagDetail(lagSeconds: number) {
       return `最近同步比本地存储落后约 ${Math.round(lagSeconds / 60)} 分钟。`
     },
+    noSourceDataTitle: "所选数据源无数据",
+    noSourceDataAction: "切换数据源",
+    noSourceDataDetail: "当前数据源在所选时间窗口内无用量数据。",
   },
 }
 

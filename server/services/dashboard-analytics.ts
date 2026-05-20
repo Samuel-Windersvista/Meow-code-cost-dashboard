@@ -8,8 +8,8 @@ import { buildObservedPricingCoverageRows } from "./observed-pricing-coverage"
 import { normalizePricingModelKey, rowMatchesPricingModelKey } from "./pricing-identity"
 import { resolveCanonicalPrice, type PricingResolverRow } from "./pricing-registry"
 import {
-  RAW_OPENCODE_MESSAGES_CURSOR_KEY,
-  RAW_OPENCODE_SESSIONS_CURSOR_KEY,
+  rawOpencodeMessagesCursorKey,
+  rawOpencodeSessionsCursorKey,
   iterateAssistantMessagesFromRawDb,
   readProjectsFromRawDb,
   readSessionsFromRawDb,
@@ -34,6 +34,7 @@ type UsageFactRow = {
   cache_read_tokens: number
   cache_write_tokens: number
   total_tokens: number
+  source_label: string
 }
 
 type PricingCoverageGap = {
@@ -54,6 +55,7 @@ type SessionTreeRow = {
   directory: string
   title: string
   time_created: number
+  source_label: string
 }
 
 type SyncStateRow = {
@@ -70,7 +72,7 @@ type SyncRefreshResult = {
   syncedAt: number
 }
 
-type SyncRefreshRunner = (rawDatabasePath: string, analyticsDatabasePath: string, now: number) => SyncRefreshResult | Promise<SyncRefreshResult>
+type SyncRefreshRunner = (rawDatabasePath: string, analyticsDatabasePath: string, sourceLabel: string, now: number) => SyncRefreshResult | Promise<SyncRefreshResult>
 
 type SyncLifecycleStatus = "idle" | "requested" | "started" | "running" | "completed" | "failed" | "interrupted"
 
@@ -78,6 +80,7 @@ type ActiveSyncJob = {
   jobId: string
   databasePath: string
   rawDatabasePath: string
+  sourceLabel: string
   requestedAt: number
   startedAt: number
   startedAtMs: number
@@ -153,7 +156,7 @@ function readWorkerError(errorPath: string, stderrPath: string, fallback: string
   return fallback
 }
 
-function runSyncRefreshInWorkerProcess(rawDatabasePath: string, analyticsDatabasePath: string, now: number) {
+function runSyncRefreshInWorkerProcess(rawDatabasePath: string, analyticsDatabasePath: string, sourceLabel: string, now: number) {
   const payloadPath = newWorkerRunPath(analyticsDatabasePath, "json")
   const resultPath = newWorkerRunPath(analyticsDatabasePath, "result.json")
   const errorPath = newWorkerRunPath(analyticsDatabasePath, "error.log")
@@ -163,6 +166,7 @@ function runSyncRefreshInWorkerProcess(rawDatabasePath: string, analyticsDatabas
   fs.writeFileSync(payloadPath, JSON.stringify({
     rawDatabasePath,
     analyticsDatabasePath,
+    sourceLabel,
     now,
     resultPath,
     errorPath,
@@ -232,12 +236,12 @@ function readSyncStateRaw(databasePath: string) {
   }
 }
 
-export function buildSyncLifecycle(state: Record<string, string>) {
+export function buildSyncLifecycle(state: Record<string, string>, source?: string) {
   const requestedAt = toNumberOrNull(blankToUndefined(state.sync_requested_at) ?? state.last_refresh_requested_at ?? state.refresh_requested_at)
   const startedAt = toNumberOrNull(blankToUndefined(state.sync_started_at))
   const completedAt = toNumberOrNull(blankToUndefined(state.sync_completed_at) ?? state.last_refresh_completed_at)
   const failedAt = toNumberOrNull(blankToUndefined(state.sync_failed_at))
-  const lastSuccessfulSyncTime = toNumberOrNull(state.last_successful_sync_time ?? state.last_sync_time)
+  const lastSuccessfulSyncTime = readLastSyncTime(state, source)
   const explicitStatus = (state.sync_status ?? state.last_refresh_status ?? "idle") as SyncLifecycleStatus
   const interruptedPersisted = explicitStatus === "interrupted" && completedAt == null && failedAt == null
   const incomplete = shouldMarkInterrupted(state) || interruptedPersisted
@@ -257,6 +261,7 @@ export function buildSyncLifecycle(state: Record<string, string>) {
     durationMs: toNumberOrNull(state.last_refresh_duration_ms),
     error: blankToUndefined(state.sync_error) ?? blankToUndefined(state.last_refresh_error) ?? null,
     incomplete,
+    ...(source ? { source } : {}),
   }
 }
 
@@ -361,13 +366,24 @@ function calculateUsageSpend(priceRows: PricingResolverRow[], usage: UsageFactRo
   )
 }
 
-function readUsageFacts(databasePath: string) {
+function readUsageFacts(databasePath: string, source?: string) {
   const db = openAnalyticsReadonlyDb(databasePath)
 
   try {
+    if (source) {
+      return db.sqlite.prepare(`
+        select message_id, session_id, project_id, parent_message_id, provider_id, model_id, time_created,
+               input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens,
+               source_label
+        from message_usage_fact
+        where source_label = ?
+        order by time_created asc, message_id asc
+      `).all(source) as UsageFactRow[]
+    }
     return db.sqlite.prepare(`
       select message_id, session_id, project_id, parent_message_id, provider_id, model_id, time_created,
-             input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens
+             input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens,
+             source_label
       from message_usage_fact
       order by time_created asc, message_id asc
     `).all() as UsageFactRow[]
@@ -376,12 +392,20 @@ function readUsageFacts(databasePath: string) {
   }
 }
 
-function readSessionTree(databasePath: string) {
+function readSessionTree(databasePath: string, source?: string) {
   const db = openAnalyticsReadonlyDb(databasePath)
 
   try {
+    if (source) {
+      return db.sqlite.prepare(`
+        select session_id, parent_session_id, project_id, directory, title, time_created, source_label
+        from session_tree_edge
+        where source_label = ?
+        order by time_created asc, session_id asc
+      `).all(source) as SessionTreeRow[]
+    }
     return db.sqlite.prepare(`
-      select session_id, parent_session_id, project_id, directory, title, time_created
+      select session_id, parent_session_id, project_id, directory, title, time_created, source_label
       from session_tree_edge
       order by time_created asc, session_id asc
     `).all() as SessionTreeRow[]
@@ -407,9 +431,9 @@ export function readPricingRecords(pricingDbPath: string) {
   }
 }
 
-export function readObservedPricingCoverage(analyticsDbPath: string, pricingDbPath: string, asOfTime = Math.floor(Date.now() / 1000)) {
+export function readObservedPricingCoverage(analyticsDbPath: string, pricingDbPath: string, asOfTime = Math.floor(Date.now() / 1000), source?: string) {
   return buildObservedPricingCoverageRows({
-    usageFacts: readUsageFacts(analyticsDbPath),
+    usageFacts: readUsageFacts(analyticsDbPath, source),
     pricingRows: readPricingRecords(pricingDbPath),
     asOfTime,
   })
@@ -433,16 +457,22 @@ export function readSyncState(databasePath: string) {
   return state
 }
 
-function readLastSyncTime(syncState: Record<string, string>) {
-  const raw = syncState.last_sync_time
-    ?? syncState[RAW_OPENCODE_MESSAGES_CURSOR_KEY]
-    ?? syncState[RAW_OPENCODE_SESSIONS_CURSOR_KEY]
+function readLastSyncTime(syncState: Record<string, string>, source?: string) {
+  const raw = source
+    ? (syncState[`last_successful_sync_time:${source}`]
+      ?? syncState[`last_sync_time:${source}`]
+      ?? syncState[rawOpencodeMessagesCursorKey(source)]
+      ?? syncState[rawOpencodeSessionsCursorKey(source)])
+    : (syncState.last_successful_sync_time
+      ?? syncState.last_sync_time
+      ?? syncState["raw_opencode_messages"]
+      ?? syncState["raw_opencode_sessions"])
 
   const parsed = Number(raw)
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function deriveAnalyticsSessionRow(session: RawSessionRow, project: RawProjectRow | undefined): SessionTreeRow {
+function deriveAnalyticsSessionRow(session: RawSessionRow, project: RawProjectRow | undefined, sourceLabel: string): SessionTreeRow {
   const directory = session.directory === session.projectId && project?.path
     ? project.path
     : session.directory
@@ -457,10 +487,11 @@ function deriveAnalyticsSessionRow(session: RawSessionRow, project: RawProjectRo
     directory,
     title,
     time_created: session.createdAt,
+    source_label: sourceLabel,
   }
 }
 
-export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDatabasePath: string, now = Math.floor(Date.now() / 1000)) {
+export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDatabasePath: string, sourceLabel: string, now = Math.floor(Date.now() / 1000)) {
   const rawDb = openRawOpencodeDb(rawDatabasePath)
   const analyticsDb = openAnalyticsDb(analyticsDatabasePath)
 
@@ -468,21 +499,21 @@ export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDat
     const projects = readProjectsFromRawDb(rawDb)
     const projectsById = new Map(projects.map((project) => [project.projectId, project]))
     const sessions = readSessionsFromRawDb(rawDb)
-    const sessionRows = sessions.map((session) => deriveAnalyticsSessionRow(session, projectsById.get(session.projectId)))
+    const sessionRows = sessions.map((session) => deriveAnalyticsSessionRow(session, projectsById.get(session.projectId), sourceLabel))
     const sessionProjectIds = new Map(sessionRows.map((session) => [session.session_id, session.project_id]))
     const maxSessionTime = sessionRows.reduce((max, row) => Math.max(max, row.time_created), 0)
 
-    const deleteMessageFacts = analyticsDb.sqlite.prepare("delete from message_usage_fact")
-    const deleteSessionTree = analyticsDb.sqlite.prepare("delete from session_tree_edge")
+    const deleteMessageFacts = analyticsDb.sqlite.prepare("delete from message_usage_fact where source_label = ?")
+    const deleteSessionTree = analyticsDb.sqlite.prepare("delete from session_tree_edge where source_label = ?")
     const insertSession = analyticsDb.sqlite.prepare(`
-      insert into session_tree_edge (session_id, parent_session_id, project_id, directory, title, time_created)
-      values (?, ?, ?, ?, ?, ?)
+      insert into session_tree_edge (source_label, session_id, parent_session_id, project_id, directory, title, time_created)
+      values (?, ?, ?, ?, ?, ?, ?)
     `)
     const insertMessage = analyticsDb.sqlite.prepare(`
       insert into message_usage_fact (
-        message_id, session_id, project_id, parent_message_id, provider_id, model_id, time_created,
+        source_label, message_id, session_id, project_id, parent_message_id, provider_id, model_id, time_created,
         input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_tokens, total_tokens
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     let messagesSynced = 0
@@ -490,11 +521,12 @@ export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDat
 
     analyticsDb.sqlite.exec("begin")
     try {
-      deleteMessageFacts.run()
-      deleteSessionTree.run()
+      deleteMessageFacts.run(sourceLabel)
+      deleteSessionTree.run(sourceLabel)
 
       for (const session of sessionRows) {
         insertSession.run(
+          session.source_label,
           session.session_id,
           session.parent_session_id,
           session.project_id,
@@ -506,6 +538,7 @@ export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDat
 
       for (const message of iterateAssistantMessagesFromRawDb(rawDb)) {
         insertMessage.run(
+          sourceLabel,
           message.messageId,
           message.sessionId,
           sessionProjectIds.get(message.sessionId) ?? message.sessionId,
@@ -524,10 +557,10 @@ export function syncRawOpencodeToAnalytics(rawDatabasePath: string, analyticsDat
         maxMessageTime = Math.max(maxMessageTime, message.createdAt)
       }
 
-      writeCursorValue(analyticsDb, RAW_OPENCODE_SESSIONS_CURSOR_KEY, String(maxSessionTime))
-      writeCursorValue(analyticsDb, RAW_OPENCODE_MESSAGES_CURSOR_KEY, String(maxMessageTime))
-      writeCursorValue(analyticsDb, "last_sync_time", String(now))
-      writeCursorValue(analyticsDb, "last_successful_sync_time", String(now))
+      writeCursorValue(analyticsDb, rawOpencodeSessionsCursorKey(sourceLabel), String(maxSessionTime))
+      writeCursorValue(analyticsDb, rawOpencodeMessagesCursorKey(sourceLabel), String(maxMessageTime))
+      writeCursorValue(analyticsDb, `last_sync_time:${sourceLabel}`, String(now))
+      writeCursorValue(analyticsDb, `last_successful_sync_time:${sourceLabel}`, String(now))
       analyticsDb.sqlite.exec("commit")
     } catch (error) {
       analyticsDb.sqlite.exec("rollback")
@@ -615,8 +648,9 @@ export function buildOverview(
   pricingDbPath: string,
   now = Math.floor(Date.now() / 1000),
   window: string | ParsedDashboardWindow | undefined = "30d",
+  source?: string,
 ) {
-  const usageRows = readUsageFacts(analyticsDbPath)
+  const usageRows = readUsageFacts(analyticsDbPath, source)
   const priceRows = readPricingRecords(pricingDbPath)
   const syncState = readSyncStateRaw(analyticsDbPath)
   const windowBounds = isParsedDashboardWindow(window)
@@ -655,7 +689,7 @@ export function buildOverview(
     }
   }
 
-  const lastSyncTime = readLastSyncTime(syncState)
+  const lastSyncTime = readLastSyncTime(syncState, source)
   const hasPricedUsage = pricedTokens > 0
   const hasWindowUsage = windowTokens > 0
   const hasPricedWindowUsage = windowPricedTokens > 0
@@ -669,6 +703,7 @@ export function buildOverview(
     priceCoverage: lifetimeTokens > 0 ? pricedTokens / lifetimeTokens : 1,
     pricingCoverageGaps: [...pricingCoverageGaps.values()].sort((a, b) => b.totalTokens - a.totalTokens),
     syncLagSeconds: lastSyncTime == null ? null : Math.max(0, now - lastSyncTime),
+    ...(source ? { source } : {}),
   }
 }
 
@@ -715,9 +750,9 @@ function getBucketStart(unixSeconds: number, granularity: SeriesGranularity) {
 export function buildSeries(
   analyticsDbPath: string,
   pricingDbPath: string,
-  options: { granularity?: SeriesGranularity; metrics?: SeriesMetric[]; window?: DashboardWindowRange; now?: number } = {},
+  options: { granularity?: SeriesGranularity; metrics?: SeriesMetric[]; window?: DashboardWindowRange; now?: number; source?: string } = {},
 ) {
-  const usageRows = readUsageFacts(analyticsDbPath)
+  const usageRows = readUsageFacts(analyticsDbPath, options.source)
   const priceRows = readPricingRecords(pricingDbPath)
   const granularity = options.granularity ?? "daily"
   const now = options.now ?? Math.floor(Date.now() / 1000)
@@ -838,10 +873,10 @@ export function buildSeries(
   }
 }
 
-function buildSessionLeaderboardRows(analyticsDbPath: string, pricingDbPath: string) {
-  const sessions = readSessionTree(analyticsDbPath)
+function buildSessionLeaderboardRows(analyticsDbPath: string, pricingDbPath: string, source?: string) {
+  const sessions = readSessionTree(analyticsDbPath, source)
   const priceRows = readPricingRecords(pricingDbPath)
-  const usageRows = readUsageFacts(analyticsDbPath)
+  const usageRows = readUsageFacts(analyticsDbPath, source)
   const sessionMetaById = new Map(sessions.map((session) => [session.session_id, session]))
   const usageBySession = new Map<string, { sessionId: string; totalTokens: number; totalCostUsd: number | null }>()
 
@@ -892,8 +927,8 @@ function applyLeaderboardLimit<T>(rows: T[], limit?: number) {
   return rows.slice(0, limit)
 }
 
-export function buildCostSessionLeaderboard(analyticsDbPath: string, pricingDbPath: string, limit?: number) {
-  const sessions = buildSessionLeaderboardRows(analyticsDbPath, pricingDbPath)
+export function buildCostSessionLeaderboard(analyticsDbPath: string, pricingDbPath: string, limit?: number, source?: string) {
+  const sessions = buildSessionLeaderboardRows(analyticsDbPath, pricingDbPath, source)
     .sort((a, b) => (b.totalCostUsd ?? -1) - (a.totalCostUsd ?? -1) || b.totalTokens - a.totalTokens || a.sessionId.localeCompare(b.sessionId))
 
   return {
@@ -901,8 +936,8 @@ export function buildCostSessionLeaderboard(analyticsDbPath: string, pricingDbPa
   }
 }
 
-export function buildTokenSessionLeaderboard(analyticsDbPath: string, pricingDbPath: string, limit?: number) {
-  const sessions = buildSessionLeaderboardRows(analyticsDbPath, pricingDbPath)
+export function buildTokenSessionLeaderboard(analyticsDbPath: string, pricingDbPath: string, limit?: number, source?: string) {
+  const sessions = buildSessionLeaderboardRows(analyticsDbPath, pricingDbPath, source)
     .sort((a, b) => b.totalTokens - a.totalTokens || a.sessionId.localeCompare(b.sessionId))
 
   return {
@@ -930,7 +965,7 @@ function activeJobLifecycle(job: ActiveSyncJob, status: "started" | "running") {
 async function runBackgroundSync(job: ActiveSyncJob) {
   try {
     const runner = useDefaultSyncRefreshRunner ? defaultSyncRefreshRunner : syncRefreshRunner
-    const syncResult = await runner(job.rawDatabasePath, job.databasePath, job.requestedAt)
+    const syncResult = await runner(job.rawDatabasePath, job.databasePath, job.sourceLabel, job.requestedAt)
     const completedAt = Math.floor(Date.now() / 1000)
     const durationMs = Math.max(0, Date.now() - job.startedAtMs)
 
@@ -975,20 +1010,20 @@ async function runBackgroundSync(job: ActiveSyncJob) {
   }
 }
 
-export function getSyncRefreshLifecycle(databasePath: string) {
+export function getSyncRefreshLifecycle(databasePath: string, source?: string) {
   const active = activeSyncJobs.get(databasePath)
   if (active) {
     return activeJobLifecycle(active, "running")
   }
 
-  return buildSyncLifecycle(readSyncState(databasePath))
+  return buildSyncLifecycle(readSyncState(databasePath), source)
 }
 
 export function hasActiveSyncRefresh(databasePath: string) {
   return activeSyncJobs.has(databasePath)
 }
 
-export function queueSyncRefresh(databasePath: string, rawDatabasePath: string, now = Math.floor(Date.now() / 1000)) {
+export function queueSyncRefresh(databasePath: string, rawDatabasePath: string, sourceLabel: string, now = Math.floor(Date.now() / 1000)) {
   const active = activeSyncJobs.get(databasePath)
   if (active) {
     return {
@@ -1006,6 +1041,7 @@ export function queueSyncRefresh(databasePath: string, rawDatabasePath: string, 
     jobId: newSyncJobId(),
     databasePath,
     rawDatabasePath,
+    sourceLabel,
     requestedAt,
     startedAt,
     startedAtMs: Date.now(),

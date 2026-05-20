@@ -236,78 +236,53 @@ function formatMetricValue(value: number | null, metric: SeriesMetric, locale?: 
   }).format(value)
 }
 
-function unitForMetric(metric: SeriesMetric, locale?: Intl.LocalesArgument) {
+function unitForMetric(metric: SeriesMetric, labels: Record<string, string>) {
   if (metric === "cost") {
-    return isChineseLocale(locale) ? "美元" : "USD"
+    return labels.usdUnit
   }
 
-  return isChineseLocale(locale) ? "令牌" : "tokens"
+  return labels.tokensUnit
 }
 
-function zeroValueNote(point: SeriesPoint, metricValue: number, locale?: Intl.LocalesArgument) {
+function zeroValueNote(point: SeriesPoint, metricValue: number, labels: Record<string, string>) {
   if (metricValue !== 0) {
     return ""
   }
 
   if (hasAnyBucketActivity(point)) {
-    return isChineseLocale(locale) ? "当前指标为 0" : "0 selected metric"
+    return labels.zeroSelectedMetric
   }
 
-  return isChineseLocale(locale) ? "无活动" : "No activity"
+  return labels.noActivity
 }
 
-function chartCopy(locale?: Intl.LocalesArgument) {
-  if (isChineseLocale(locale)) {
-    return {
-      range: "范围",
-      buckets: "个桶",
-      unit: "单位",
-      xAxis: "X 轴: 时间",
-      yAxis: "Y 轴",
-      details: "序列浏览器明细",
-      showing: "显示",
-      of: "/",
-      noActiveSpikes: "暂无活动尖峰",
-      noSpikeAlerts: "所选窗口未检测到尖峰告警。",
-      unavailable: "不可用",
-      modelShareUnavailable: "此数据窗口暂无模型占比拆分。",
-      noOpenIssues: "暂无未解决问题",
-      noPricingIssues: "当前未显示全历史定价问题。",
-      firstSeen: "首次发现",
-      lastSeen: "最后发现",
-      reason: "原因",
-      hint: "提示",
-      expand: "展开",
-      collapse: "收起",
-    }
-  }
-
+function chartCopy(labels: Record<string, string>) {
   return {
-    range: "Range",
-    buckets: "buckets",
-    unit: "Unit",
-    xAxis: "X-axis: Time",
-    yAxis: "Y-axis",
-    details: "Series Explorer Details",
-    showing: "Showing",
-    of: "of",
-    noActiveSpikes: "No active spikes",
-    noSpikeAlerts: "No spike alerts detected for the selected window.",
-    unavailable: "Unavailable",
-    modelShareUnavailable: "Model-share breakdown is unavailable for this data window.",
-    noOpenIssues: "No open issues",
-    noPricingIssues: "No lifetime pricing issues are currently visible.",
-    firstSeen: "First seen",
-    lastSeen: "Last seen",
-    reason: "Reason",
-    hint: "Hint",
-    expand: "Expand",
-    collapse: "Collapse",
+    range: labels.range,
+    buckets: labels.buckets,
+    unit: labels.unit,
+    xAxis: labels.xAxis,
+    yAxis: labels.yAxis,
+    details: labels.seriesDetails,
+    showing: labels.showing,
+    of: labels.of,
+    noActiveSpikes: labels.noActiveSpikes,
+    noSpikeAlerts: labels.noSpikeAlerts,
+    unavailable: labels.unavailable,
+    modelShareUnavailable: labels.modelShareUnavailable,
+    noOpenIssues: labels.noOpenIssues,
+    noPricingIssues: labels.noPricingIssues,
+    firstSeen: labels.firstSeen,
+    lastSeen: labels.lastSeen,
+    reason: labels.reason,
+    hint: labels.hint,
+    expand: labels.expand,
+    collapse: labels.collapse,
   }
 }
 
-function formatUnixTime(value: number | null | undefined, locale?: Intl.LocalesArgument) {
-  return value == null ? chartCopy(locale).unavailable : new Date(value * 1000).toLocaleString(locale)
+function formatUnixTime(value: number | null | undefined, labels: Record<string, string>, locale?: Intl.LocalesArgument) {
+  return value == null ? chartCopy(labels).unavailable : new Date(value * 1000).toLocaleString(locale)
 }
 
 function formatPercent(value: number | null | undefined, locale?: Intl.LocalesArgument) {
@@ -325,7 +300,7 @@ function sumMetric(points: SeriesPoint[], metric: SeriesMetric) {
   return points.reduce((sum, point) => sum + (getMetricValue(point, metric) ?? 0), 0)
 }
 
-function buildSpikeDiagnostics(points: SeriesPoint[], metric: SeriesMetric, granularity: ChartGranularity, locale?: Intl.LocalesArgument) {
+function buildSpikeDiagnostics(points: SeriesPoint[], metric: SeriesMetric, granularity: ChartGranularity, labels: Record<string, string>, locale?: Intl.LocalesArgument) {
   const values = points
     .map((point) => ({ point, value: getMetricValue(point, metric) ?? 0 }))
     .filter((entry) => entry.value > 0)
@@ -340,25 +315,19 @@ function buildSpikeDiagnostics(points: SeriesPoint[], metric: SeriesMetric, gran
     .filter((entry) => entry.value >= threshold && entry.value > median)
     .sort((a, b) => b.value - a.value)
     .slice(0, 3)
-
-  if (isChineseLocale(locale)) {
-    const copy = chartCopy(locale)
-    return {
-      count: spikes.length,
-      summary: spikes.length > 0 ? `${spikes.length} 个尖峰` : copy.noActiveSpikes,
-      description: spikes.length > 0
-        ? `检测到 ${spikes.length} 个桶高于基线 ${formatMetricValue(median, metric, locale)} 的 3 倍。`
-        : `${points.length} 个桶中未发现高于基线 3 倍的${unitForMetric(metric, locale)}尖峰。`,
-      rows: spikes.map((entry) => `${formatBucketLabel(entry.point, granularity, locale, true)} · ${formatMetricValue(entry.value, metric, locale)}`),
-    }
-  }
+  const spikeUnit = unitForMetric(metric, labels)
+  const medianStr = formatMetricValue(median, metric, locale)
 
   return {
     count: spikes.length,
-    summary: spikes.length > 0 ? `${spikes.length} ${spikes.length === 1 ? "spike" : "spikes"}` : chartCopy(locale).noActiveSpikes,
+    summary: spikes.length > 0 ? `${spikes.length} ${spikes.length === 1 ? labels.spikeSingular : labels.spikePlural}` : labels.noActiveSpikes,
     description: spikes.length > 0
-      ? `${spikes.length} buckets are above 3x the ${formatMetricValue(median, metric, locale)} baseline.`
-      : points.length === 0 ? "No buckets exceed the selected-metric baseline." : `${points.length} buckets do not exceed 3x the selected-metric baseline.`,
+      ? isChineseLocale(locale)
+        ? `检测到 ${spikes.length} 个桶高于基线 ${medianStr} 的 3 倍。`
+        : `${spikes.length} buckets are above 3x the ${medianStr} baseline.`
+      : isChineseLocale(locale)
+        ? `${points.length} 个桶中未发现高于基线 3 倍的${spikeUnit}尖峰。`
+        : points.length === 0 ? "No buckets exceed the selected-metric baseline." : `${points.length} buckets do not exceed 3x the selected-metric baseline.`,
     rows: spikes.map((entry) => `${formatBucketLabel(entry.point, granularity, locale, true)} · ${formatMetricValue(entry.value, metric, locale)}`),
   }
 }
@@ -448,6 +417,43 @@ export function MainSeriesChart(props: {
     anomalyAlerts: string
     topModelShare: string
     pricingIssues: string
+    // chart copy fields
+    range: string
+    buckets: string
+    unit: string
+    xAxis: string
+    yAxis: string
+    seriesDetails: string
+    showing: string
+    of: string
+    noActiveSpikes: string
+    noSpikeAlerts: string
+    modelShareUnavailable: string
+    noOpenIssues: string
+    noPricingIssues: string
+    firstSeen: string
+    lastSeen: string
+    reason: string
+    hint: string
+    unavailable: string
+    expand: string
+    collapse: string
+    // unit/label fields
+    usdUnit: string
+    tokensUnit: string
+    zeroSelectedMetric: string
+    noActivity: string
+    windowEmpty: string
+    spikeSingular: string
+    spikePlural: string
+    issueSingular: string
+    issuePlural: string
+    modelSingular: string
+    // enum fields
+    enumStale: string
+    enumActive: string
+    enumDisabled: string
+    emptyState: string
     controls?: {
       windowLabel: string
       selectedWindow: string
@@ -505,12 +511,10 @@ export function MainSeriesChart(props: {
   const barWidth = chartPoints.length <= 1 ? 28 : Math.max(4, Math.min(28, Math.floor(480 / chartPoints.length)))
   const selectedMetricLabel = metricOptions.find((option) => option.value === metric)?.label ?? props.labels.selectedMetric
   const windowLabel = metadata?.windowLabel ?? props.labels.chartSubtitle
-  const displayWindowLabel = isChineseLocale(locale)
-    ? ({ "24H": "24小时", "7D": "7天", "30D": "30天", "90D": "90天", ALL: "全部" }[windowLabel] ?? windowLabel)
-    : windowLabel
-  const copy = chartCopy(locale)
-  const chartTitle = `${selectedMetricLabel} · ${displayWindowLabel} · ${granularityLabel(granularity, locale)}`
-  const unitLabel = unitForMetric(metric, locale)
+  const labels = props.labels as unknown as Record<string, string>
+  const copy = chartCopy(labels)
+  const chartTitle = `${selectedMetricLabel} · ${windowLabel} · ${granularityLabel(granularity, locale)}`
+  const unitLabel = unitForMetric(metric, labels)
   const bucketCount = metadata?.bucketCount ?? chartPoints.length
   const rangeLabel = `${copy.range}: ${formatRangeIsoDate(displayMetadata?.rangeStart)} → ${formatRangeIsoDate(displayMetadata?.rangeEnd)}`
   const showYear = Boolean(displayMetadata?.rangeStart || displayMetadata?.rangeEnd)
@@ -538,7 +542,7 @@ export function MainSeriesChart(props: {
   }
   const yForValue = (value: number) => plot.bottom - ((value / maxMetricValue) * (plot.bottom - plot.top))
   const footerPoints = chartPoints
-  const spikeDiagnostics = buildSpikeDiagnostics(chartPoints, metric, granularity, locale)
+  const spikeDiagnostics = buildSpikeDiagnostics(chartPoints, metric, granularity, labels, locale)
   const selectedTotal = sumMetric(chartPoints, metric)
   const tokenTotal = chartPoints.reduce((sum, point) => sum
     + getBucketTokenActivity(point), 0)
@@ -551,11 +555,11 @@ export function MainSeriesChart(props: {
     : (coverage != null && coverage < 0.999 ? 1 : 0) + (props.pricingRecords && activePricingRecords === 0 ? 1 : 0)
   const pricingSummary = props.pricingRecords?.length === 0
     ? pricingGaps.length > 0
-      ? isChineseLocale(locale) ? `${pricingGaps.length} 个缺价模型` : `${pricingGaps.length} missing ${pricingGaps.length === 1 ? "model" : "models"}`
+      ? `${pricingGaps.length} ${pricingGaps.length === 1 ? labels.modelSingular : labels.modelsUnit}`
       : copy.noOpenIssues
     : isChineseLocale(locale)
-      ? `覆盖 ${formatPercent(coverage, locale)} · ${pricingIssueCount} 个问题`
-      : `Coverage ${formatPercent(coverage, locale)} · ${pricingIssueCount} ${pricingIssueCount === 1 ? "issue" : "issues"}`
+      ? `覆盖 ${formatPercent(coverage, locale)} · ${pricingIssueCount} ${labels.issuePlural}`
+      : `Coverage ${formatPercent(coverage, locale)} · ${pricingIssueCount} ${pricingIssueCount === 1 ? labels.issueSingular : labels.issuePlural}`
   const pricingDescription = isChineseLocale(locale)
     ? pricingIssueCount > 0
       ? `全历史价格覆盖率为 ${formatPercent(coverage, locale)}，有 ${activePricingRecords} 条启用定价记录；请补齐缺失模型价格或刷新定价注册表。`
@@ -563,14 +567,12 @@ export function MainSeriesChart(props: {
     : pricingIssueCount > 0
       ? `Lifetime price coverage is ${formatPercent(coverage, locale)} with ${activePricingRecords} enabled pricing records; add missing model prices or refresh the registry.`
       : `Lifetime price coverage is ${formatPercent(coverage, locale)} with ${activePricingRecords} enabled pricing records available for costing.`
-  const windowOverviewSummary = isChineseLocale(locale)
-    ? `${chartPoints.length === 0 ? "空窗口" : `${chartPoints.length} 个桶`} · ${formatMetricValue(selectedTotal, metric, locale)} ${unitLabel}`
-    : `${chartPoints.length === 0 ? "Empty window" : `${chartPoints.length} buckets`} · ${formatMetricValue(selectedTotal, metric, locale)} ${unitLabel}`
+  const windowOverviewSummary = `${chartPoints.length === 0 ? labels.windowEmpty : `${chartPoints.length} ${copy.buckets}`} · ${formatMetricValue(selectedTotal, metric, locale)} ${unitLabel}`
   const windowOverviewDescription = isChineseLocale(locale)
     ? `所选窗口包含 ${chartPoints.length} 个${granularityLabel(granularity, locale)}桶，累计 ${formatMetricValue(selectedTotal, metric, locale)} ${unitLabel}，总令牌活动 ${new Intl.NumberFormat(locale).format(tokenTotal)}。`
     : `Selected window includes ${chartPoints.length} ${granularityLabel(granularity, locale).toLowerCase()} buckets totaling ${formatMetricValue(selectedTotal, metric, locale)} ${unitLabel}, with ${new Intl.NumberFormat(locale).format(tokenTotal)} total token activity.`
 
-  const loadingLabel = props.loadingLabel ?? (isChineseLocale(locale) ? "加载中" : "Loading")
+  const loadingLabel = props.loadingLabel ?? labels.loading ?? (isChineseLocale(locale) ? "加载中" : "Loading")
 
   const seriesPolyline = buildPolyline(chartPoints.map((point, index) => ({
     x: xForPoint(point, index),
@@ -681,7 +683,7 @@ export function MainSeriesChart(props: {
                       return null
                     }
                     const metricHeight = plot.bottom - yForValue(metricValue)
-                    const zeroNote = zeroValueNote(point, metricValue, locale)
+                    const zeroNote = zeroValueNote(point, metricValue, labels)
                     return (
                       <rect
                         key={point.bucketStart}
@@ -729,7 +731,7 @@ export function MainSeriesChart(props: {
                   <div className="chart-footer chart-footer--scroll-window" role="region" tabIndex={0} aria-label="Series Explorer details">
                     {footerPoints.map((point) => {
                       const metricValue = getMetricValue(point, metric) ?? null
-                      const zeroNote = metricValue == null ? "" : zeroValueNote(point, metricValue, locale)
+                      const zeroNote = metricValue == null ? "" : zeroValueNote(point, metricValue, labels)
                       const bucketTokenActivity = getBucketTokenActivity(point)
                       const activityHeat = getBucketActivityHeat(bucketTokenActivity, maxBucketTokenActivity)
                       return (
@@ -763,7 +765,7 @@ export function MainSeriesChart(props: {
           <CollapsiblePanel title={props.labels.anomalyAlerts} summary={spikeDiagnostics.summary} defaultOpen className="status-panel__block" labels={{ expand: copy.expand, collapse: copy.collapse }}>
             <p className="hero-card__caption">{spikeDiagnostics.description}</p>
             {spikeDiagnostics.rows.length > 0 ? (
-              <ul className="status-panel__list" aria-label={isChineseLocale(locale) ? "尖峰桶" : "Spike buckets"}>
+              <ul className="status-panel__list" aria-label={labels.anomalyAlerts}>
                 {spikeDiagnostics.rows.map((row) => <li key={row}>{row}</li>)}
               </ul>
             ) : null}
@@ -774,14 +776,14 @@ export function MainSeriesChart(props: {
           <CollapsiblePanel title={props.labels.pricingIssues} summary={pricingSummary} defaultOpen className="status-panel__block" labels={{ expand: copy.expand, collapse: copy.collapse }}>
             <p className="hero-card__caption">{pricingDescription}</p>
             {pricingGaps.length > 0 ? (
-              <ul className="status-panel__list" aria-label={isChineseLocale(locale) ? "缺价模型" : "Missing pricing models"}>
+              <ul className="status-panel__list" aria-label={labels.pricingIssues}>
                 {pricingGaps.map((gap) => (
                   <li key={`${gap.providerId}/${gap.modelId}`}>
                     <strong>{gap.providerId} / {gap.modelId}</strong>
-                    <span>{new Intl.NumberFormat(locale).format(gap.totalTokens)} {isChineseLocale(locale) ? "令牌" : "tokens"} · {new Intl.NumberFormat(locale).format(gap.messageCount)} {isChineseLocale(locale) ? "条消息" : "messages"}</span>
+                    <span>{new Intl.NumberFormat(locale).format(gap.totalTokens)} {labels.tokensUnit} · {new Intl.NumberFormat(locale).format(gap.messageCount)} {labels.messagesUnit}</span>
                     <dl className="status-panel__meta">
-                      <div><dt>{copy.firstSeen}</dt><dd>{formatUnixTime(gap.firstSeen, locale)}</dd></div>
-                      <div><dt>{copy.lastSeen}</dt><dd>{formatUnixTime(gap.lastSeen, locale)}</dd></div>
+                      <div><dt>{copy.firstSeen}</dt><dd>{formatUnixTime(gap.firstSeen, labels, locale)}</dd></div>
+                      <div><dt>{copy.lastSeen}</dt><dd>{formatUnixTime(gap.lastSeen, labels, locale)}</dd></div>
                       <div><dt>{copy.reason}</dt><dd>{gap.reason}</dd></div>
                       <div><dt>{copy.hint}</dt><dd>{isChineseLocale(locale) && gap.reason === "no_matching_pricing_record" ? `为 ${gap.providerId} / ${gap.modelId} 添加启用且 source URL 有效的定价记录。` : gap.hint}</dd></div>
                     </dl>

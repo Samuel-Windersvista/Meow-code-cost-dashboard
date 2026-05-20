@@ -2,7 +2,7 @@ import { Router } from "express"
 
 import { isDashboardRequestAuthenticated } from "../auth"
 import { getSyncRefreshLifecycle, readSyncState } from "../services/dashboard-analytics"
-import { RAW_OPENCODE_MESSAGES_CURSOR_KEY, RAW_OPENCODE_SESSIONS_CURSOR_KEY } from "../services/raw-opencode"
+import { rawOpencodeMessagesCursorKey, rawOpencodeSessionsCursorKey } from "../services/raw-opencode"
 
 function toNumber(value: string | undefined) {
   if (value == null) {
@@ -93,7 +93,7 @@ export function diagnosticsRoutes(analyticsDbPath: string, dashboardToken: strin
       sync_started_at: lifecycle.startedAt == null ? "" : String(lifecycle.startedAt),
       sync_error: "",
     } : readSyncState(analyticsDbPath)
-    const lastSyncTime = isActiveRefresh ? null : toNumber(state.last_sync_time ?? state[RAW_OPENCODE_MESSAGES_CURSOR_KEY] ?? state[RAW_OPENCODE_SESSIONS_CURSOR_KEY])
+    const lastSyncTime = isActiveRefresh ? null : toNumber(state.last_sync_time ?? state[rawOpencodeMessagesCursorKey("opencode")] ?? state[rawOpencodeSessionsCursorKey("opencode")] ?? state["raw_opencode_messages"] ?? state["raw_opencode_sessions"])
 
     res.json({
       backend: { ok: true, now },

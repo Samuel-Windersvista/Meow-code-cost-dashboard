@@ -1,7 +1,7 @@
 import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 
-import { configure, ensureParentDir, normalizeLegacySyncState } from "./db-internals"
+import { configure, ensureParentDir, migrateAnalyticsSchema, normalizeLegacySyncState } from "./db-internals"
 import { analyticsBootstrapSql, message_usage_fact, session_tree_edge, sync_state } from "./schema.sql"
 
 const analyticsSchema = { message_usage_fact, session_tree_edge, sync_state }
@@ -13,6 +13,7 @@ export function bootstrapAnalyticsDb(file: string) {
     configure(sqlite, "readwrite")
     normalizeLegacySyncState(sqlite)
     sqlite.exec(analyticsBootstrapSql)
+    migrateAnalyticsSchema(sqlite)
   } finally {
     sqlite.close()
   }

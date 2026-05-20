@@ -54,8 +54,12 @@ type AnalyticsDb = {
   sqlite: SqliteDatabase
 }
 
-export const RAW_OPENCODE_MESSAGES_CURSOR_KEY = "raw_opencode_messages"
-export const RAW_OPENCODE_SESSIONS_CURSOR_KEY = "raw_opencode_sessions"
+export function rawOpencodeMessagesCursorKey(sourceLabel: string) {
+  return `raw_opencode_messages:${sourceLabel}`
+}
+export function rawOpencodeSessionsCursorKey(sourceLabel: string) {
+  return `raw_opencode_sessions:${sourceLabel}`
+}
 
 const DEFAULT_MESSAGE_BATCH_SIZE = 500
 const MAX_MESSAGE_BATCH_SIZE = 5_000
