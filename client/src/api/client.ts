@@ -247,8 +247,9 @@ async function readJson<T>(input: RequestInfo | URL, init?: RequestInit) {
   return payload as T
 }
 
-export async function fetchOverview(window: DashboardWindow = { mode: "preset", preset: "30d" }) {
+export async function fetchOverview(window: DashboardWindow = { mode: "preset", preset: "30d" }, source?: string) {
   const params = windowSelectionToQuery(window)
+  if (source) params.set("source", source)
   return await readJson<OverviewResponse>(`/api/overview/lifetime?${params.toString()}`)
 }
 
@@ -256,15 +257,19 @@ export async function fetchSeries(
   granularity: SeriesGranularity,
   window: DashboardWindow,
   metrics: SeriesMetric[] = ["inputTokens", "outputTokens", "reasoningTokens", "cacheReadTokens", "cacheWriteTokens", "cost"],
+  source?: string,
 ) {
   const params = new URLSearchParams({ metrics: metrics.join(",") })
   windowSelectionToQuery(window).forEach((value, key) => params.set(key, value))
+  if (source) params.set("source", source)
 
   return await readJson<SeriesResponse>(`/api/series/${granularity}?${params.toString()}`)
 }
 
-export async function fetchSyncStatus() {
-  return await readJson<SyncStatusResponse>("/api/sync/status")
+export async function fetchSyncStatus(source?: string) {
+  const params = source ? new URLSearchParams({ source }) : undefined
+  const url = params ? `/api/sync/status?${params.toString()}` : "/api/sync/status"
+  return await readJson<SyncStatusResponse>(url)
 }
 
 export async function requestRefresh() {
@@ -309,12 +314,16 @@ export async function restartBackendService() {
   })
 }
 
-export async function fetchCostLeaderboard(limit = 5) {
-  return await readJson<LeaderboardResponse>(`/api/leaderboards/cost-sessions?limit=${limit}`)
+export async function fetchCostLeaderboard(limit = 5, source?: string) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (source) params.set("source", source)
+  return await readJson<LeaderboardResponse>(`/api/leaderboards/cost-sessions?${params.toString()}`)
 }
 
-export async function fetchTokenLeaderboard(limit = 5) {
-  return await readJson<LeaderboardResponse>(`/api/leaderboards/token-sessions?limit=${limit}`)
+export async function fetchTokenLeaderboard(limit = 5, source?: string) {
+  const params = new URLSearchParams({ limit: String(limit) })
+  if (source) params.set("source", source)
+  return await readJson<LeaderboardResponse>(`/api/leaderboards/token-sessions?${params.toString()}`)
 }
 
 export async function fetchPricingRecords() {

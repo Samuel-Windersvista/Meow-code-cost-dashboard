@@ -2,6 +2,7 @@ import { HeroCards } from "../components/HeroCards"
 import { LeaderboardTables } from "../components/LeaderboardTables"
 import { LanguageToggle } from "../components/LanguageToggle"
 import { MainSeriesChart } from "../components/MainSeriesChart"
+import { SourceSelector } from "../components/SourceSelector"
 import { BackendManagementPanel } from "../components/BackendManagementPanel"
 import { SecondaryPanels } from "../components/SecondaryPanels"
 import { useDashboardState } from "../hooks/useDashboardState"
@@ -132,6 +133,8 @@ export default function DashboardPage() {
   const {
     window,
     setWindow,
+    selectedSource,
+    setSelectedSource,
     granularity,
     setGranularity,
     metric,
@@ -252,7 +255,18 @@ export default function DashboardPage() {
               }}
             />
           </div>
-          <LanguageToggle language={language} label={copy.switchLanguage} onToggle={toggleLanguage} />
+          <div className="dashboard-header__source-row">
+            <SourceSelector
+              selectedSource={selectedSource}
+              onSourceChange={setSelectedSource}
+              labels={{
+                allSources: copy.allSources,
+                sourceOpencode: copy.sourceOpencode,
+                sourceHermes: copy.sourceHermes,
+              }}
+            />
+            <LanguageToggle language={language} label={copy.switchLanguage} onToggle={toggleLanguage} />
+          </div>
         </div>
       </header>
 

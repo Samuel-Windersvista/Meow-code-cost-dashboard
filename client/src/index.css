@@ -107,6 +107,12 @@ button {
   gap: 12px;
 }
 
+.dashboard-header__source-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .dashboard-header__status-card {
   min-height: 100%;
 }
@@ -178,6 +184,33 @@ button {
 
 .console-button--ghost {
   background: rgba(8, 16, 26, 0.84);
+}
+
+.source-selector {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.source-btn {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.source-btn:hover {
+  border-color: rgba(124, 224, 255, 0.3);
+  color: var(--text);
+}
+
+.source-btn.active {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: var(--accent-strong);
 }
 
 .refresh-cluster {

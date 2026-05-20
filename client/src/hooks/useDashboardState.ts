@@ -249,6 +249,7 @@ export function buildAlertItems(args: { overview: OverviewResponse; pricingRecor
 
 export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
   const [window, setWindow] = useState<DashboardWindow>({ mode: "preset", preset: "24h" })
+  const [selectedSource, setSelectedSource] = useState<string | undefined>(undefined)
   const [granularity, setGranularity] = useState<SeriesGranularity>("daily")
   const [metric, setMetric] = useState<SeriesMetric>("cost")
   const [overview, setOverview] = useState<OverviewResponse>(EMPTY_OVERVIEW)
@@ -270,7 +271,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null)
   const requestTracker = useRef(createDashboardRequestTracker())
   const refreshTracker = useRef(createRefreshStateTracker())
-  const latestQuery = useRef<{ window: DashboardWindow; granularity: SeriesGranularity }>({ window, granularity })
+  const latestQuery = useRef<{ window: DashboardWindow; granularity: SeriesGranularity; selectedSource: string | undefined }>({ window, granularity, selectedSource })
 
   const effectiveGranularity = useMemo<SeriesGranularity>(() => {
     if (window.mode === "preset" && window.preset === "all" && granularity === "hourly") {
@@ -280,9 +281,9 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
     return granularity
   }, [granularity, window])
 
-  latestQuery.current = { window, granularity: effectiveGranularity }
+  latestQuery.current = { window, granularity: effectiveGranularity, selectedSource }
 
-  const load = useCallback(async (requestId: number, nextWindow: DashboardWindow, nextGranularity: SeriesGranularity) => {
+  const load = useCallback(async (requestId: number, nextWindow: DashboardWindow, nextGranularity: SeriesGranularity, source?: string) => {
     let diagnosticsResponse: BackendDiagnosticsResponse
     try {
       diagnosticsResponse = await fetchBackendDiagnostics()
@@ -326,11 +327,11 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
     }
 
     const [overviewResponse, seriesResponse, syncResponse, costLeaderboardResponse, tokenLeaderboardResponse, pricingRecordsResponse, observedCoverageResponse] = await Promise.all([
-      fetchOverview(nextWindow),
-      fetchSeries(nextGranularity, nextWindow, ["cost", "inputTokens", "outputTokens", "reasoningTokens", "cacheReadTokens", "cacheWriteTokens"]),
-      fetchSyncStatus(),
-      fetchCostLeaderboard(),
-      fetchTokenLeaderboard(),
+      fetchOverview(nextWindow, source),
+      fetchSeries(nextGranularity, nextWindow, ["cost", "inputTokens", "outputTokens", "reasoningTokens", "cacheReadTokens", "cacheWriteTokens"], source),
+      fetchSyncStatus(source),
+      fetchCostLeaderboard(undefined, source),
+      fetchTokenLeaderboard(undefined, source),
       fetchPricingRecords(),
       fetchObservedPricingCoverage(),
     ])
@@ -350,8 +351,8 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
     return diagnosticsResponse
   }, [])
 
-  const loadWithBusyRetry = useCallback(async (requestId: number, nextWindow: DashboardWindow, nextGranularity: SeriesGranularity) => {
-    return await retryAnalyticsBusy(() => load(requestId, nextWindow, nextGranularity))
+  const loadWithBusyRetry = useCallback(async (requestId: number, nextWindow: DashboardWindow, nextGranularity: SeriesGranularity, source?: string) => {
+    return await retryAnalyticsBusy(() => load(requestId, nextWindow, nextGranularity, source))
   }, [load])
 
   useEffect(() => {
@@ -363,7 +364,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
       const requestId = requestTracker.current.issue()
 
       try {
-        await loadWithBusyRetry(requestId, window, effectiveGranularity)
+        await loadWithBusyRetry(requestId, window, effectiveGranularity, selectedSource)
       } catch (loadError) {
         if (!cancelled && requestTracker.current.isCurrent(requestId)) {
           setError("dashboard_load_failed")
@@ -380,7 +381,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
     return () => {
       cancelled = true
     }
-  }, [effectiveGranularity, loadWithBusyRetry, window])
+  }, [effectiveGranularity, loadWithBusyRetry, selectedSource, window])
 
   const reload = useCallback(async () => {
     if (!authSession.authenticated) {
@@ -392,7 +393,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
     const requestId = requestTracker.current.issue()
 
     try {
-      await loadWithBusyRetry(requestId, window, effectiveGranularity)
+      await loadWithBusyRetry(requestId, window, effectiveGranularity, selectedSource)
     } catch (refreshError) {
       if (requestTracker.current.isCurrent(requestId)) {
         setError("dashboard_refresh_failed")
@@ -402,7 +403,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
         setIsRefreshing(false)
       }
     }
-  }, [authSession.authenticated, effectiveGranularity, loadWithBusyRetry, window])
+  }, [authSession.authenticated, effectiveGranularity, loadWithBusyRetry, selectedSource, window])
 
   const markBackendStopped = useCallback(() => {
     requestTracker.current.issue()
@@ -486,7 +487,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
       setBackendActionStatus("authenticated")
       const requestId = requestTracker.current.issue()
       const query = latestQuery.current
-      await loadWithBusyRetry(requestId, query.window, query.granularity)
+      await loadWithBusyRetry(requestId, query.window, query.granularity, query.selectedSource)
     } catch {
       setBackendActionStatus("failed")
       setError("dashboard_auth_failed")
@@ -496,7 +497,7 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
   const reloadAfterBackendControl = useCallback(async () => {
     const requestId = requestTracker.current.issue()
     const query = latestQuery.current
-    await loadWithBusyRetry(requestId, query.window, query.granularity)
+    await loadWithBusyRetry(requestId, query.window, query.granularity, query.selectedSource)
   }, [loadWithBusyRetry])
 
   const checkBackend = useCallback(async () => {
@@ -607,6 +608,8 @@ export function useDashboardState(locale: Intl.LocalesArgument = "en-US") {
   return {
     window,
     setWindow,
+    selectedSource,
+    setSelectedSource,
     granularity: effectiveGranularity,
     setGranularity,
     metric,
